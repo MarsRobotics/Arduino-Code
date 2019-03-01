@@ -21,8 +21,10 @@
 //Use for testing and calibrating. For normal operation, make these false.
 //Open Serial Monitor to see details.
 const bool TEST_MOTORS = false;
-const bool CALIBRATE_ENCODER = false;
-const int ENCODER_TO_CALIBRATE = 2;//0-2 from front to back.
+const bool CALIBRATE_ENCODER = true;
+const bool TEST_STEPPERS = false;
+const int ENCODER_TO_CALIBRATE = 1;//0-2 from front to back.
+const int STEPPER_TO_TEST = 0;//0 is allowed for both boxes. 1 and 2 are only allowed for left box (ARDUINO_NUM 0)
 
 const int ARDUINO_NUM = 0;//0 is left arduino, 1 is right.
 
@@ -59,7 +61,7 @@ const bool TURN_CW[3] = {false, true, true};
 //True zero of the encoders.
 //Zero is taken to be the packed in state.
 const int TRUE_ZERO[2][3] = {{0, 0, 0},
-                             {0, 0, 0}};
+                             {450, 0, 80}};
 
 //The analog pins where the encoders are plugged into
 const int ENCODER_PINS[3] = {A0, A1, A0};
@@ -73,18 +75,22 @@ const float SPEED_ADJUST[2][6] = {{1, 1, 1,  //Left Drive
 //change the corresponding float to negative.
 
 //Stepper motor controller pins.
-const int STEPPER_PUL[2] = {11, 13};
-const int STEPPER_DIR[2] = {10, 12};
+const int STEPPER_PUL[3] = {11, 12, 13};//0 is conveyor, 1 is raise/lower bucket chain, 2 is power bucket chain
+const int STEPPER_DIR[3] = {8, 9, 10};
+const int STEPPER_ENA[3] = {5, 6, 7};
 
-//Bucket Chain Motor Controller
-Sabertooth ChainMotor = Sabertooth(134, SWSerial);
+//Conveyor Belt and Camera Lift Motor Controller
+Sabertooth ConveyorMotor = Sabertooth(135, SWSerial);
 
 const int DRIVE = 1;//drive motors are on M1 on Sabertooth
 const int ARTICULATION = 2;//articulation motors are on M2
 const int DRIVE_SPEED = 50;//50/127 default speed for drive motors
 const int TURN_SPEED = 50;//50/127 default speed for articulation motors
-const int DIG_SPEED = 50;//50/127 default speed for digger and dumper
-const int STEPPER_SPEED = 10;//10/100 default speed for raising and lowering digger and dumper
+const int DIG_SPEED = 25;//25 microsecond pulse frequency (it runs through a 20:1 gear ratio
+const int RAISE_SPEED = 500;//500 microsecond pulse frequency
+const int MOVE_CONVEYOR_SPEED = 500;
+const int CONVEYOR_SPEED = 50;//50/127
+const int CAMERA_SPEED = 25;//25/127
 
 /*ROS setup*/
 
@@ -109,17 +115,29 @@ void setup() {
   SWSerial.begin(9600);
   Serial.begin(9600);//Used for human-readable feedback. Open Serial Monitor to view.
   Serial.println("I am a robot... Bleep Bloop.");
-  for(int i=0; i<3; i++){
+  pinMode(STEPPER_PUL[0], OUTPUT);//Initialize all the Stepper motor pins
+  pinMode(STEPPER_DIR[0], OUTPUT);//right box only has 1 controller
+  pinMode(STEPPER_ENA[0], OUTPUT);
+  digitalWrite(STEPPER_ENA[0], HIGH);//Active-low enable, so we set it to high to prevent it from drawing current at rest
+  if (ARDUINO_NUM == 0) { //left box has 3 controllers
+    for (int i = 1; i < 3; i++) {
+      pinMode(STEPPER_PUL[i], OUTPUT);
+      pinMode(STEPPER_DIR[i], OUTPUT);
+      pinMode(STEPPER_ENA[i], OUTPUT);
+      digitalWrite(STEPPER_ENA[i], HIGH);
+    }
+  }
+  for (int i = 0; i < 3; i++) {//make sure all the drive motors are off
     runWheelMotor(i, DRIVE, 0);
     runWheelMotor(i, ARTICULATION, 0);
   }
-  runDigMotor(0, 0);
-  runDigMotor(1, 0);
-  delay(1000);
-  if(TEST_MOTORS)
+  delay(1000);//just a little break before we go to work
+  if (TEST_MOTORS)//all the test functions. Booleans used to run them are found at the top of the file.
     testDrive(DRIVE_SPEED);
-  if(CALIBRATE_ENCODER)
-    calibrateEncoder(ENCODER_TO_CALIBRATE);*/
+  if (CALIBRATE_ENCODER)
+    calibrateEncoder(ENCODER_TO_CALIBRATE);
+  if (TEST_STEPPERS)
+    testStepper(STEPPER_TO_TEST);
 }
 
 void loop() {
@@ -129,15 +147,33 @@ void loop() {
   movementFeedback.publish(&feedbackMessage);
 }
 
-void calibrateEncoder(int controller){
+/**
+ * prints the values of all the encoders
+ */
+void printEncoders() {
+  while (true) {
+    int encoderVal = analogRead(ENCODER_PINS[0]);
+    String str = "    ";
+    Serial.println(str + encoderVal + str);
+  }
+}
+
+/**
+ * prints the value of the specified encoder while turning the corresponding wheel.
+ */
+void calibrateEncoder(int controller) {
   int encoderVal = analogRead(ENCODER_PINS[controller]);
-  while(encoderVal != 359){
-    runWheelMotor(controller, ARTICULATION, -10);
+  while (encoderVal != 0) {
+    encoderVal = analogRead(ENCODER_PINS[controller]);
+    runWheelMotor(controller, ARTICULATION, -30);
     String str = "Current Angle: ";
     Serial.println(str + encoderVal);
   }
 }
 
+/**
+ * Tests all the drive motors with a delay between each one.
+ */
 void testDrive(int vel){
   String str = "Driving motor ";
   for(int i = 0; i < 3; i++){
@@ -150,20 +186,18 @@ void testDrive(int vel){
   }
 }
 
-void testStepper(int vel){
-  runStepperMotor(0, vel);
-  runStepperMotor(1, vel);
-  delay(5000);
-  runStepperMotor(0, -vel);
-  runStepperMotor(1, -vel);
-  delay(5000);
-}
-
-void testDig(int vel){
-  runDigMotor(0, vel);
-  delay(1000);
-  runDigMotor(0, -vel);
-  delay(1000);
+/**
+ * Tests the specified stepper by running it forward for 1200 steps (usually 3 revs) and then backward for 5000 steps
+ */
+void testStepper(int controller) {
+  int steps = 0;
+  for (int i = 0; i < 1200; i++) {
+    runStepperMotor(controller, true);
+    steps++;
+  }
+  for (int i = 0; i < 1200; i++) {
+    runStepperMotor(controller, false);
+  }
 }
 
 /**
@@ -178,6 +212,13 @@ void turnInPlace(bool right){
   for(int i = 0; i < 3; i++){
     runWheelMotor(i, DRIVE, driveSpeed);
   }
+}
+
+/**
+   function to turn the robot while moving
+*/
+void turnDrive(bool right, bool forward) {
+
 }
 
 /**
@@ -250,33 +291,49 @@ void runWheelMotor(int controller, int motorNum, int vel){
 }
 
 /**
- * method to run a stepper 
- */
-void runStepperMotor(int stepper, int vel){
-  int d = getStepperDelay(vel);
-  if(d < 0)
-    digitalWrite(STEPPER_DIR[stepper], LOW);
-  else
+   method to run a stepper
+   range is 0 to 200kHZ pulse frequency.
+*/
+void runStepperMotor(int stepper, bool dir) {
+  int d;
+  switch (stepper) {//sets the pulse frequency (speed) based on which stepper we are running
+    case 0:
+      d = MOVE_CONVEYOR_SPEED;
+      break;
+    case 1:
+      d = RAISE_SPEED;
+      break;
+    case 2:
+      d = DIG_SPEED;
+      break;
+  }
+  digitalWrite(STEPPER_ENA[stepper], LOW);//enable the stepper (active-low)
+  if (!dir) //control it to turn CW or CCW
     digitalWrite(STEPPER_DIR[stepper], HIGH);
-  if(abs(d) < 5)
-    return;
-  digitalWrite(STEPPER_PUL[stepper], HIGH);
+  else
+    digitalWrite(STEPPER_DIR[stepper], LOW);
+  digitalWrite(STEPPER_PUL[stepper], HIGH);//pulse with a frequency of 1/RAISE_SPEED
   delayMicroseconds(d);
   digitalWrite(STEPPER_PUL[stepper], LOW);
   delayMicroseconds(d);
+  digitalWrite(STEPPER_ENA[stepper], HIGH);//disable the stepper
 }
 
 /**
- * helper method to find the required delay for a proper frequency output
+ * method to run the conveyor motor and the camera mount
+ * runs on a sabertooth, just like the wheels, so -127 - 127 range
  */
-int getStepperDelay(int vel){
-  if(vel > 100)
-    vel = 100;
-  int delayMin = 5;//200kHz max
-  int delayCur = delayMin * (100 - abs(vel));
-  return delayCur;
-}
-
-void runDigMotor(int motorNum, int vel){
-  ChainMotor.motor(motorNum, vel);
+void runConveyorMotor(int motorNum, bool dir) {
+  if (motorNum == 0) {//conveyor
+    if (dir)
+      ConveyorMotor.motor(motorNum, CONVEYOR_SPEED);
+    else
+      ConveyorMotor.motor(motorNum, -CONVEYOR_SPEED);
+  }
+  else {//camera
+    if (dir)
+      ConveyorMotor.motor(motorNum, CAMERA_SPEED);
+    else
+      ConveyorMotor.motor(motorNum, -CAMERA_SPEED);
+  }
 }

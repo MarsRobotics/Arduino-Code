@@ -3,8 +3,7 @@ Header: F = Front, M = Middle, B = Back
 Subs: 	T = Top, B = Bottom
 		D = Drive, A = Articulation
 
-Note: 	Although we know that MLA is TM, it doesn't work (problem is inside the EE box, so there is not voltage output on the port), so it is an X.
-		Also, the motor for the FLA has a broken lead.
+Note: 	Right Middle does not work on box side. Most likely a problem with the Sabertooth.
 
 Left:
 F:
@@ -12,7 +11,18 @@ F:
 	A: BL
 M:
 	D: TR
-	A: X
+	A: TM
 B:
 	D: TL
 	A: BR
+
+Right:
+F:
+	D: BR
+	A: TR
+M:
+	D:
+	A: 
+B:
+	D: BM
+	A: TM
