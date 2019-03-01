@@ -20,10 +20,13 @@
 
 //Use for testing and calibrating. For normal operation, make these false.
 //Open Serial Monitor to see details.
+const bool DEBUG = true;
 const bool TEST_MOTORS = false;
 const bool CALIBRATE_ENCODER = true;
 const bool TEST_STEPPERS = false;
+const bool PRINT_ENCODERS = false;
 const int ENCODER_TO_CALIBRATE = 1;//0-2 from front to back.
+const bool CALIBRATE_DIRECTION = false;//true for positive, false for negative
 const int STEPPER_TO_TEST = 0;//0 is allowed for both boxes. 1 and 2 are only allowed for left box (ARDUINO_NUM 0)
 
 const int ARDUINO_NUM = 0;//0 is left arduino, 1 is right.
@@ -44,14 +47,11 @@ Sabertooth ST[2][3] = {{Sabertooth(128, SWSerial), Sabertooth(133, SWSerial), Sa
 boolean enabled[2][3] = {{true, true, true},
                          {true, true, true}};
 
-//the encoders send values between 0 and 1024. This will convert it to degrees
-const double ENCODER_SCALE = 360/1024;
-
 //Angles for wheels to be in when in different states
 const int PACKED_ANGLES[3] = {0, 0, 0};
-const int TURN_ANGLES[3] = {135, 180, 135};
-const int DRIVE_ANGLES[3] = {180, 180, 180};
-const int SIDE_DRIVE_ANGLES[3] = {90, 90, 90};
+const int TURN_ANGLES[3] = {384, 512, 384};
+const int DRIVE_ANGLES[3] = {512, 512, 512};
+const int SIDE_DRIVE_ANGLES[3] = {256, 256, 256};
 
 //Left wheels from front to back
 //turn CCW, CW, CW
@@ -60,15 +60,15 @@ const bool TURN_CW[3] = {false, true, true};
 
 //True zero of the encoders.
 //Zero is taken to be the packed in state.
-const int TRUE_ZERO[2][3] = {{0, 0, 0},
-                             {450, 0, 80}};
+const int TRUE_ZERO[2][3] = {{0, 360, 640},
+                             {450, 470, 90}};
 
 //The analog pins where the encoders are plugged into
-const int ENCODER_PINS[3] = {A0, A1, A0};
+const int ENCODER_PINS[3] = {A0, A1, A2};
 
 //the factor to adjust the drive motors' speeds by to try and keep them turning at the same speed.
 const float SPEED_ADJUST[2][6] = {{1, 1, 1,  //Left Drive
-                                   1, 1, 1}, //Left Art
+                                   1, -1, -1}, //Left Art
                                   {1, 1, 1,  //Right Drive
                                    1, 1, 1}};//Right Art
 //If the motors are wired backwards to how we expect,
@@ -82,15 +82,24 @@ const int STEPPER_ENA[3] = {5, 6, 7};
 //Conveyor Belt and Camera Lift Motor Controller
 Sabertooth ConveyorMotor = Sabertooth(135, SWSerial);
 
+//wheel motors are dual channel. The first motor is drive while the second is articulation
 const int DRIVE = 1;//drive motors are on M1 on Sabertooth
 const int ARTICULATION = 2;//articulation motors are on M2
+
+//all the pre-set speeds which we run the motors at
 const int DRIVE_SPEED = 50;//50/127 default speed for drive motors
 const int TURN_SPEED = 50;//50/127 default speed for articulation motors
 const int DIG_SPEED = 25;//25 microsecond pulse frequency (it runs through a 20:1 gear ratio
-const int RAISE_SPEED = 500;//500 microsecond pulse frequency
+const int RAISE_SPEED = 500;//100 microsecond pulse frequency
 const int MOVE_CONVEYOR_SPEED = 500;
 const int CONVEYOR_SPEED = 50;//50/127
 const int CAMERA_SPEED = 25;//25/127
+
+//commands
+const int PACK_IN = 1;
+const int DRIVE_STRAIGHT = 2;
+const int TURN = 3;
+const int DRIVE_SIDE = 4;
 
 /*ROS setup*/
 
@@ -101,9 +110,12 @@ ros::Publisher movementFeedback ("MovementFeedback", &feedbackMessage);
 void messageCb( const manual::MovementCommand& msg){
   feedbackMessage.status = msg.driveDirection;
   feedbackMessage.message = "recieved a command";
-  movementFeedback.publish(&feedbackMessage);
+  //movementFeedback.publish(&feedbackMessage);
   //handle command
   nh.spinOnce();
+  runWheelMotor(0, DRIVE, 50);
+  delay(500);
+  runWheelMotor(0, DRIVE, 0);
 }
 
 ros::Subscriber<manual::MovementCommand> sub("MovementCommand", messageCb );
@@ -113,8 +125,8 @@ void setup() {
   nh.subscribe(sub);
   nh.advertise(movementFeedback);
   SWSerial.begin(9600);
-  Serial.begin(9600);//Used for human-readable feedback. Open Serial Monitor to view.
-  Serial.println("I am a robot... Bleep Bloop.");
+  if(DEBUG)
+    Serial.begin(9600);//Used for human-readable feedback. Open Serial Monitor to view.
   pinMode(STEPPER_PUL[0], OUTPUT);//Initialize all the Stepper motor pins
   pinMode(STEPPER_DIR[0], OUTPUT);//right box only has 1 controller
   pinMode(STEPPER_ENA[0], OUTPUT);
@@ -135,39 +147,51 @@ void setup() {
   if (TEST_MOTORS)//all the test functions. Booleans used to run them are found at the top of the file.
     testDrive(DRIVE_SPEED);
   if (CALIBRATE_ENCODER)
-    calibrateEncoder(ENCODER_TO_CALIBRATE);
+    calibrateEncoder(ENCODER_TO_CALIBRATE, CALIBRATE_DIRECTION);
   if (TEST_STEPPERS)
     testStepper(STEPPER_TO_TEST);
+  if(PRINT_ENCODERS)
+    while(true)
+      printEncoders();
+  driveStraight(true);
 }
 
 void loop() {
   nh.spinOnce();
-  delay(1000); 
+  delay(1); 
   //need to have publisher in loop for consistent functionality
-  movementFeedback.publish(&feedbackMessage);
+  //movementFeedback.publish(&feedbackMessage);
 }
 
 /**
  * prints the values of all the encoders
  */
 void printEncoders() {
-  while (true) {
-    int encoderVal = analogRead(ENCODER_PINS[0]);
+  int encoderVal = 0;
+  for(int i = 0; i < 3; i++){
+    encoderVal = readEncoder(i);
     String str = "    ";
-    Serial.println(str + encoderVal + str);
+    Serial.print(str + encoderVal + str);
   }
+  Serial.println();
 }
 
 /**
  * prints the value of the specified encoder while turning the corresponding wheel.
  */
-void calibrateEncoder(int controller) {
-  int encoderVal = analogRead(ENCODER_PINS[controller]);
-  while (encoderVal != 0) {
-    encoderVal = analogRead(ENCODER_PINS[controller]);
-    runWheelMotor(controller, ARTICULATION, -30);
-    String str = "Current Angle: ";
-    Serial.println(str + encoderVal);
+void calibrateEncoder(int controller, bool dir) {
+  int encoderVal = 0;
+  while (true) {
+    if(dir)
+      runWheelMotor(controller, ARTICULATION, 30);
+    else
+      runWheelMotor(controller, ARTICULATION, -30);
+    for(int i = 0; i < 3; i++){
+      encoderVal = readEncoder(i);
+      String str = "    ";
+      Serial.print(str + encoderVal + str);
+    }
+    Serial.println();
   }
 }
 
@@ -187,15 +211,13 @@ void testDrive(int vel){
 }
 
 /**
- * Tests the specified stepper by running it forward for 1200 steps (usually 3 revs) and then backward for 5000 steps
+ * Tests the specified stepper by running it forward for 3200 steps (usually 8 revs) and then backward for 5000 steps
  */
 void testStepper(int controller) {
-  int steps = 0;
-  for (int i = 0; i < 1200; i++) {
+  for (int i = 0; i < 1600; i++) {
     runStepperMotor(controller, true);
-    steps++;
   }
-  for (int i = 0; i < 1200; i++) {
+  for (int i = 0; i < 3200; i++) {
     runStepperMotor(controller, false);
   }
 }
@@ -205,7 +227,7 @@ void testStepper(int controller) {
  * @param right whether we want to turn right or left
  */
 void turnInPlace(bool right){
-  alignWheels(TURN_ANGLES);
+  alignWheels(3);
   int driveSpeed = DRIVE_SPEED;
   if(right && ARDUINO_NUM == 1 || !right && ARDUINO_NUM == 0)
     driveSpeed = -driveSpeed;
@@ -226,7 +248,7 @@ void turnDrive(bool right, bool forward) {
  * @param forward whether we want to go forward or backward
  */
 void driveStraight(bool forward){
-  alignWheels(DRIVE_ANGLES);
+  alignWheels(2);
   int driveSpeed = DRIVE_SPEED;
   if(!forward)
     driveSpeed = -driveSpeed;
@@ -239,22 +261,37 @@ void driveStraight(bool forward){
  * Align the wheels to the specified angles
  * @param angles the angles to align the wheels to
  */
-void alignWheels(const int angles[3]){
+void alignWheels(int commandNum){
   bool complete = false;
   bool aligned[3] = {false, false, false};
+  int angles[3];
+  switch(commandNum){//copy the proper array to angles;
+    case 1:
+      memcpy(angles, PACKED_ANGLES, 3);
+    case 2:
+      memcpy(angles, DRIVE_ANGLES, 3);
+    case 3:
+      memcpy(angles, TURN_ANGLES, 3);
+    case 4:
+      memcpy(angles, SIDE_DRIVE_ANGLES, 3);
+  }
   for(int i = 0; i < 3; i++)//if a wheel is disabled, we do not want to try to align it
     if(!enabled[ARDUINO_NUM][i])
       aligned[i] = true;
   while(!complete){
+    if(DEBUG)
+      printEncoders();
     for(int i = 0; i < 3; i++){
       if(aligned[i])
         continue;
-      if(abs((TRUE_ZERO[ARDUINO_NUM][i] + analogRead(ENCODER_PINS[i]) * ENCODER_SCALE) - angles[i]) < 3)//CHECK THIS
-        aligned[i] = true;
+      int diff = readEncoder(i) - angles[i];
+      if(abs(diff) < 14)//allow for 14 encoder counts of error (~5 degrees)
+        aligned[i] = true;        
       else{
-      //CHECK THIS TOO (I think this actually works)
         bool cw = true;
-        if((TRUE_ZERO[ARDUINO_NUM][i] + analogRead(ENCODER_PINS[i]) * ENCODER_SCALE) > angles[i])
+        if(readEncoder(i) > angles[i] && abs(diff) < 60)
+          cw = !cw;
+        if(commandNum == 1 && abs(diff) > 60)
           cw = !cw;
         if(!TURN_CW[i])
           cw = !cw;
@@ -273,6 +310,13 @@ void alignWheels(const int angles[3]){
     if(aligned[0] && aligned[1] && aligned[2])
       complete = true;
   }
+}
+
+int readEncoder(int i){
+  int encoderVal = analogRead(ENCODER_PINS[i]) - TRUE_ZERO[ARDUINO_NUM][i];
+  if(encoderVal < 0)
+    encoderVal += 1024;
+  return encoderVal;
 }
 
 /**
@@ -298,10 +342,10 @@ void runStepperMotor(int stepper, bool dir) {
   int d;
   switch (stepper) {//sets the pulse frequency (speed) based on which stepper we are running
     case 0:
-      d = MOVE_CONVEYOR_SPEED;
+      d = RAISE_SPEED;
       break;
     case 1:
-      d = RAISE_SPEED;
+      d = MOVE_CONVEYOR_SPEED;
       break;
     case 2:
       d = DIG_SPEED;
