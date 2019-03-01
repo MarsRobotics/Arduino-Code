@@ -20,16 +20,16 @@
 
 //Use for testing and calibrating. For normal operation, make these false.
 //Open Serial Monitor to see details.
-const bool DEBUG = true;
+const bool DEBUG = false;
 const bool TEST_MOTORS = false;
-const bool CALIBRATE_ENCODER = true;
+const bool CALIBRATE_ENCODER = false;
 const bool TEST_STEPPERS = false;
 const bool PRINT_ENCODERS = false;
 const int ENCODER_TO_CALIBRATE = 1;//0-2 from front to back.
 const bool CALIBRATE_DIRECTION = false;//true for positive, false for negative
 const int STEPPER_TO_TEST = 0;//0 is allowed for both boxes. 1 and 2 are only allowed for left box (ARDUINO_NUM 0)
 
-const int ARDUINO_NUM = 0;//0 is left arduino, 1 is right.
+const int ARDUINO_NUM = 1;//0 is left arduino, 1 is right.
 
 //In order to output human readable, useful data goes on the Serial Monitor
 //Control for the Sabertooths goes on pin 14.
@@ -56,7 +56,7 @@ const int SIDE_DRIVE_ANGLES[3] = {256, 256, 256};
 //Left wheels from front to back
 //turn CCW, CW, CW
 //Right side is opposite
-const bool TURN_CW[3] = {false, true, true};
+const bool TURN_CW[3] = {false, false, true};
 
 //True zero of the encoders.
 //Zero is taken to be the packed in state.
@@ -153,7 +153,7 @@ void setup() {
   if(PRINT_ENCODERS)
     while(true)
       printEncoders();
-  driveStraight(true);
+  //driveStraight(true);
 }
 
 void loop() {
@@ -291,7 +291,7 @@ void alignWheels(int commandNum){
       if(abs(diff) < 14)//allow for 14 encoder counts of error (~5 degrees)
         aligned[i] = true;        
       
-      else if(abs(diff) <= 128){//if we are within 128 degrees, switch to fine-tuning mode
+      else if(abs(diff) <= 128){//if we are within 128 encoder counts (45 degrees), switch to fine-tuning mode
         cw = lastDir[i];
         if(abs(diff) > abs(lastDiff[i]))//if we are farther away from our target than we were last loop, then reverse the direction we turn the wheel
           cw = !cw;
