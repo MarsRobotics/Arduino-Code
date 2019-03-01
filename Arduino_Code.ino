@@ -278,6 +278,8 @@ void alignWheels(int commandNum){
   for(int i = 0; i < 3; i++)//if a wheel is disabled, we do not want to try to align it
     if(!enabled[ARDUINO_NUM][i])
       aligned[i] = true;
+  int lastDiff[3];
+  bool lastDir[3];
   while(!complete){
     if(DEBUG)
       printEncoders();
@@ -285,17 +287,13 @@ void alignWheels(int commandNum){
       if(aligned[i])
         continue;
       int diff = readEncoder(i) - angles[i];
+      bool cw = true;
       if(abs(diff) < 14)//allow for 14 encoder counts of error (~5 degrees)
         aligned[i] = true;        
-      else{
-        bool cw = true;
-        if(readEncoder(i) > angles[i] && abs(diff) < 60)
-          cw = !cw;
-        if(commandNum == 1 && abs(diff) > 60)
-          cw = !cw;
-        if(!TURN_CW[i])
-          cw = !cw;
-        if(ARDUINO_NUM == 1)
+      
+      else if(abs(diff) <= 128){//if we are within 128 degrees, switch to fine-tuning mode
+        cw = lastDir[i];
+        if(abs(diff) > abs(lastDiff[i]))//if we are farther away from our target than we were last loop, then reverse the direction we turn the wheel
           cw = !cw;
         if(cw){
           runWheelMotor(i, ARTICULATION, TURN_SPEED);
@@ -306,6 +304,31 @@ void alignWheels(int commandNum){
           runWheelMotor(i, DRIVE, -DRIVE_SPEED);
         }
       }
+      
+      else{//we are far away from our target, so just make sure we are turning the correct direction to get there
+        if(commandNum == 1)//packing in will have us go the opposite direction
+          cw = !cw;
+        if(!TURN_CW[i])//back wheels go the opposite direction
+          cw = !cw;
+        if(ARDUINO_NUM == 1)//the right side of the robot also goes in the opposite direction
+          cw = !cw;
+        if(cw){
+          runWheelMotor(i, ARTICULATION, TURN_SPEED);
+          if(TURN_CW[i])
+            runWheelMotor(i, DRIVE, -DRIVE_SPEED);//check the drive directions
+          else
+            runWheelMotor(i, DRIVE, DRIVE_SPEED);
+        }
+        else{
+          runWheelMotor(i, ARTICULATION, -TURN_SPEED);
+          if(TURN_CW[i])
+            runWheelMotor(i, DRIVE, DRIVE_SPEED);
+          else
+            runWheelMotor(i, DRIVE, -DRIVE_SPEED);
+        }
+      }
+      lastDir[i] = cw;
+      lastDiff[i] = diff;
     }
     if(aligned[0] && aligned[1] && aligned[2])
       complete = true;
