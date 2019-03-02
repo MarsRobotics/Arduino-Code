@@ -1,7 +1,7 @@
 #include <Sabertooth.h>
 #include <SoftwareSerial.h>
 #include <ros.h>
-#include <manual/MovementCommand.h>
+#include <manual/SimpleCommand.h>
 #include <manual/MovementFeedback.h>
 /**
  * This is the code to run on the Arduinos.
@@ -107,26 +107,25 @@ ros::NodeHandle nh;
 manual::MovementFeedback feedbackMessage;
 ros::Publisher movementFeedback ("MovementFeedback", &feedbackMessage);
 
-void messageCb( const manual::MovementCommand& msg){
-  feedbackMessage.status = msg.driveDirection;
+void messageCb( const manual::SimpleCommand& msg){
+  feedbackMessage.status = msg.data;
   feedbackMessage.message = "recieved a command";
-  //movementFeedback.publish(&feedbackMessage);
+  movementFeedback.publish(&feedbackMessage);
   //handle command
-  nh.spinOnce();
   runWheelMotor(0, DRIVE, 50);
   delay(500);
   runWheelMotor(0, DRIVE, 0);
+  nh.spinOnce();
 }
 
-ros::Subscriber<manual::MovementCommand> sub("MovementCommand", messageCb );
+ros::Subscriber<manual::SimpleCommand> sub("MovementCommand", messageCb );
 
 void setup() {
   nh.initNode();
   nh.subscribe(sub);
   nh.advertise(movementFeedback);
   SWSerial.begin(9600);
-  if(DEBUG)
-    Serial.begin(9600);//Used for human-readable feedback. Open Serial Monitor to view.
+  Serial.begin(9600);//Used for human-readable feedback. Open Serial Monitor to view.
   pinMode(STEPPER_PUL[0], OUTPUT);//Initialize all the Stepper motor pins
   pinMode(STEPPER_DIR[0], OUTPUT);//right box only has 1 controller
   pinMode(STEPPER_ENA[0], OUTPUT);
@@ -158,9 +157,6 @@ void setup() {
 
 void loop() {
   nh.spinOnce();
-  delay(1); 
-  //need to have publisher in loop for consistent functionality
-  //movementFeedback.publish(&feedbackMessage);
 }
 
 /**
