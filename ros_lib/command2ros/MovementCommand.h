@@ -22,10 +22,22 @@ namespace command2ros
       _packIn_type packIn;
       typedef int32_t _packOut_type;
       _packOut_type packOut;
-      typedef int32_t _pause_type;
-      _pause_type pause;
-      typedef const char* _msg_type;
-      _msg_type msg;
+      typedef int32_t _raiseBucketChain_type;
+      _raiseBucketChain_type raiseBucketChain;
+      typedef int32_t _lowerBucketChain_type;
+      _lowerBucketChain_type lowerBucketChain;
+      typedef int32_t _speedBucketChain_type;
+      _speedBucketChain_type speedBucketChain;
+      typedef int32_t _raiseConveyorBelt_type;
+      _raiseConveyorBelt_type raiseConveyorBelt;
+      typedef int32_t _lowerConveyorBelt_type;
+      _lowerConveyorBelt_type lowerConveyorBelt;
+      typedef int32_t _speedConveyorBelt_type;
+      _speedConveyorBelt_type speedConveyorBelt;
+      typedef int32_t _misc1_type;
+      _misc1_type misc1;
+      typedef int32_t _misc2_type;
+      _misc2_type misc2;
 
     MovementCommand():
       serialID(0),
@@ -33,8 +45,14 @@ namespace command2ros
       stop(0),
       packIn(0),
       packOut(0),
-      pause(0),
-      msg("")
+      raiseBucketChain(0),
+      lowerBucketChain(0),
+      speedBucketChain(0),
+      raiseConveyorBelt(0),
+      lowerConveyorBelt(0),
+      speedConveyorBelt(0),
+      misc1(0),
+      misc2(0)
     {
     }
 
@@ -94,18 +112,83 @@ namespace command2ros
       union {
         int32_t real;
         uint32_t base;
-      } u_pause;
-      u_pause.real = this->pause;
-      *(outbuffer + offset + 0) = (u_pause.base >> (8 * 0)) & 0xFF;
-      *(outbuffer + offset + 1) = (u_pause.base >> (8 * 1)) & 0xFF;
-      *(outbuffer + offset + 2) = (u_pause.base >> (8 * 2)) & 0xFF;
-      *(outbuffer + offset + 3) = (u_pause.base >> (8 * 3)) & 0xFF;
-      offset += sizeof(this->pause);
-      uint32_t length_msg = strlen(this->msg);
-      varToArr(outbuffer + offset, length_msg);
-      offset += 4;
-      memcpy(outbuffer + offset, this->msg, length_msg);
-      offset += length_msg;
+      } u_raiseBucketChain;
+      u_raiseBucketChain.real = this->raiseBucketChain;
+      *(outbuffer + offset + 0) = (u_raiseBucketChain.base >> (8 * 0)) & 0xFF;
+      *(outbuffer + offset + 1) = (u_raiseBucketChain.base >> (8 * 1)) & 0xFF;
+      *(outbuffer + offset + 2) = (u_raiseBucketChain.base >> (8 * 2)) & 0xFF;
+      *(outbuffer + offset + 3) = (u_raiseBucketChain.base >> (8 * 3)) & 0xFF;
+      offset += sizeof(this->raiseBucketChain);
+      union {
+        int32_t real;
+        uint32_t base;
+      } u_lowerBucketChain;
+      u_lowerBucketChain.real = this->lowerBucketChain;
+      *(outbuffer + offset + 0) = (u_lowerBucketChain.base >> (8 * 0)) & 0xFF;
+      *(outbuffer + offset + 1) = (u_lowerBucketChain.base >> (8 * 1)) & 0xFF;
+      *(outbuffer + offset + 2) = (u_lowerBucketChain.base >> (8 * 2)) & 0xFF;
+      *(outbuffer + offset + 3) = (u_lowerBucketChain.base >> (8 * 3)) & 0xFF;
+      offset += sizeof(this->lowerBucketChain);
+      union {
+        int32_t real;
+        uint32_t base;
+      } u_speedBucketChain;
+      u_speedBucketChain.real = this->speedBucketChain;
+      *(outbuffer + offset + 0) = (u_speedBucketChain.base >> (8 * 0)) & 0xFF;
+      *(outbuffer + offset + 1) = (u_speedBucketChain.base >> (8 * 1)) & 0xFF;
+      *(outbuffer + offset + 2) = (u_speedBucketChain.base >> (8 * 2)) & 0xFF;
+      *(outbuffer + offset + 3) = (u_speedBucketChain.base >> (8 * 3)) & 0xFF;
+      offset += sizeof(this->speedBucketChain);
+      union {
+        int32_t real;
+        uint32_t base;
+      } u_raiseConveyorBelt;
+      u_raiseConveyorBelt.real = this->raiseConveyorBelt;
+      *(outbuffer + offset + 0) = (u_raiseConveyorBelt.base >> (8 * 0)) & 0xFF;
+      *(outbuffer + offset + 1) = (u_raiseConveyorBelt.base >> (8 * 1)) & 0xFF;
+      *(outbuffer + offset + 2) = (u_raiseConveyorBelt.base >> (8 * 2)) & 0xFF;
+      *(outbuffer + offset + 3) = (u_raiseConveyorBelt.base >> (8 * 3)) & 0xFF;
+      offset += sizeof(this->raiseConveyorBelt);
+      union {
+        int32_t real;
+        uint32_t base;
+      } u_lowerConveyorBelt;
+      u_lowerConveyorBelt.real = this->lowerConveyorBelt;
+      *(outbuffer + offset + 0) = (u_lowerConveyorBelt.base >> (8 * 0)) & 0xFF;
+      *(outbuffer + offset + 1) = (u_lowerConveyorBelt.base >> (8 * 1)) & 0xFF;
+      *(outbuffer + offset + 2) = (u_lowerConveyorBelt.base >> (8 * 2)) & 0xFF;
+      *(outbuffer + offset + 3) = (u_lowerConveyorBelt.base >> (8 * 3)) & 0xFF;
+      offset += sizeof(this->lowerConveyorBelt);
+      union {
+        int32_t real;
+        uint32_t base;
+      } u_speedConveyorBelt;
+      u_speedConveyorBelt.real = this->speedConveyorBelt;
+      *(outbuffer + offset + 0) = (u_speedConveyorBelt.base >> (8 * 0)) & 0xFF;
+      *(outbuffer + offset + 1) = (u_speedConveyorBelt.base >> (8 * 1)) & 0xFF;
+      *(outbuffer + offset + 2) = (u_speedConveyorBelt.base >> (8 * 2)) & 0xFF;
+      *(outbuffer + offset + 3) = (u_speedConveyorBelt.base >> (8 * 3)) & 0xFF;
+      offset += sizeof(this->speedConveyorBelt);
+      union {
+        int32_t real;
+        uint32_t base;
+      } u_misc1;
+      u_misc1.real = this->misc1;
+      *(outbuffer + offset + 0) = (u_misc1.base >> (8 * 0)) & 0xFF;
+      *(outbuffer + offset + 1) = (u_misc1.base >> (8 * 1)) & 0xFF;
+      *(outbuffer + offset + 2) = (u_misc1.base >> (8 * 2)) & 0xFF;
+      *(outbuffer + offset + 3) = (u_misc1.base >> (8 * 3)) & 0xFF;
+      offset += sizeof(this->misc1);
+      union {
+        int32_t real;
+        uint32_t base;
+      } u_misc2;
+      u_misc2.real = this->misc2;
+      *(outbuffer + offset + 0) = (u_misc2.base >> (8 * 0)) & 0xFF;
+      *(outbuffer + offset + 1) = (u_misc2.base >> (8 * 1)) & 0xFF;
+      *(outbuffer + offset + 2) = (u_misc2.base >> (8 * 2)) & 0xFF;
+      *(outbuffer + offset + 3) = (u_misc2.base >> (8 * 3)) & 0xFF;
+      offset += sizeof(this->misc2);
       return offset;
     }
 
@@ -170,28 +253,96 @@ namespace command2ros
       union {
         int32_t real;
         uint32_t base;
-      } u_pause;
-      u_pause.base = 0;
-      u_pause.base |= ((uint32_t) (*(inbuffer + offset + 0))) << (8 * 0);
-      u_pause.base |= ((uint32_t) (*(inbuffer + offset + 1))) << (8 * 1);
-      u_pause.base |= ((uint32_t) (*(inbuffer + offset + 2))) << (8 * 2);
-      u_pause.base |= ((uint32_t) (*(inbuffer + offset + 3))) << (8 * 3);
-      this->pause = u_pause.real;
-      offset += sizeof(this->pause);
-      uint32_t length_msg;
-      arrToVar(length_msg, (inbuffer + offset));
-      offset += 4;
-      for(unsigned int k= offset; k< offset+length_msg; ++k){
-          inbuffer[k-1]=inbuffer[k];
-      }
-      inbuffer[offset+length_msg-1]=0;
-      this->msg = (char *)(inbuffer + offset-1);
-      offset += length_msg;
+      } u_raiseBucketChain;
+      u_raiseBucketChain.base = 0;
+      u_raiseBucketChain.base |= ((uint32_t) (*(inbuffer + offset + 0))) << (8 * 0);
+      u_raiseBucketChain.base |= ((uint32_t) (*(inbuffer + offset + 1))) << (8 * 1);
+      u_raiseBucketChain.base |= ((uint32_t) (*(inbuffer + offset + 2))) << (8 * 2);
+      u_raiseBucketChain.base |= ((uint32_t) (*(inbuffer + offset + 3))) << (8 * 3);
+      this->raiseBucketChain = u_raiseBucketChain.real;
+      offset += sizeof(this->raiseBucketChain);
+      union {
+        int32_t real;
+        uint32_t base;
+      } u_lowerBucketChain;
+      u_lowerBucketChain.base = 0;
+      u_lowerBucketChain.base |= ((uint32_t) (*(inbuffer + offset + 0))) << (8 * 0);
+      u_lowerBucketChain.base |= ((uint32_t) (*(inbuffer + offset + 1))) << (8 * 1);
+      u_lowerBucketChain.base |= ((uint32_t) (*(inbuffer + offset + 2))) << (8 * 2);
+      u_lowerBucketChain.base |= ((uint32_t) (*(inbuffer + offset + 3))) << (8 * 3);
+      this->lowerBucketChain = u_lowerBucketChain.real;
+      offset += sizeof(this->lowerBucketChain);
+      union {
+        int32_t real;
+        uint32_t base;
+      } u_speedBucketChain;
+      u_speedBucketChain.base = 0;
+      u_speedBucketChain.base |= ((uint32_t) (*(inbuffer + offset + 0))) << (8 * 0);
+      u_speedBucketChain.base |= ((uint32_t) (*(inbuffer + offset + 1))) << (8 * 1);
+      u_speedBucketChain.base |= ((uint32_t) (*(inbuffer + offset + 2))) << (8 * 2);
+      u_speedBucketChain.base |= ((uint32_t) (*(inbuffer + offset + 3))) << (8 * 3);
+      this->speedBucketChain = u_speedBucketChain.real;
+      offset += sizeof(this->speedBucketChain);
+      union {
+        int32_t real;
+        uint32_t base;
+      } u_raiseConveyorBelt;
+      u_raiseConveyorBelt.base = 0;
+      u_raiseConveyorBelt.base |= ((uint32_t) (*(inbuffer + offset + 0))) << (8 * 0);
+      u_raiseConveyorBelt.base |= ((uint32_t) (*(inbuffer + offset + 1))) << (8 * 1);
+      u_raiseConveyorBelt.base |= ((uint32_t) (*(inbuffer + offset + 2))) << (8 * 2);
+      u_raiseConveyorBelt.base |= ((uint32_t) (*(inbuffer + offset + 3))) << (8 * 3);
+      this->raiseConveyorBelt = u_raiseConveyorBelt.real;
+      offset += sizeof(this->raiseConveyorBelt);
+      union {
+        int32_t real;
+        uint32_t base;
+      } u_lowerConveyorBelt;
+      u_lowerConveyorBelt.base = 0;
+      u_lowerConveyorBelt.base |= ((uint32_t) (*(inbuffer + offset + 0))) << (8 * 0);
+      u_lowerConveyorBelt.base |= ((uint32_t) (*(inbuffer + offset + 1))) << (8 * 1);
+      u_lowerConveyorBelt.base |= ((uint32_t) (*(inbuffer + offset + 2))) << (8 * 2);
+      u_lowerConveyorBelt.base |= ((uint32_t) (*(inbuffer + offset + 3))) << (8 * 3);
+      this->lowerConveyorBelt = u_lowerConveyorBelt.real;
+      offset += sizeof(this->lowerConveyorBelt);
+      union {
+        int32_t real;
+        uint32_t base;
+      } u_speedConveyorBelt;
+      u_speedConveyorBelt.base = 0;
+      u_speedConveyorBelt.base |= ((uint32_t) (*(inbuffer + offset + 0))) << (8 * 0);
+      u_speedConveyorBelt.base |= ((uint32_t) (*(inbuffer + offset + 1))) << (8 * 1);
+      u_speedConveyorBelt.base |= ((uint32_t) (*(inbuffer + offset + 2))) << (8 * 2);
+      u_speedConveyorBelt.base |= ((uint32_t) (*(inbuffer + offset + 3))) << (8 * 3);
+      this->speedConveyorBelt = u_speedConveyorBelt.real;
+      offset += sizeof(this->speedConveyorBelt);
+      union {
+        int32_t real;
+        uint32_t base;
+      } u_misc1;
+      u_misc1.base = 0;
+      u_misc1.base |= ((uint32_t) (*(inbuffer + offset + 0))) << (8 * 0);
+      u_misc1.base |= ((uint32_t) (*(inbuffer + offset + 1))) << (8 * 1);
+      u_misc1.base |= ((uint32_t) (*(inbuffer + offset + 2))) << (8 * 2);
+      u_misc1.base |= ((uint32_t) (*(inbuffer + offset + 3))) << (8 * 3);
+      this->misc1 = u_misc1.real;
+      offset += sizeof(this->misc1);
+      union {
+        int32_t real;
+        uint32_t base;
+      } u_misc2;
+      u_misc2.base = 0;
+      u_misc2.base |= ((uint32_t) (*(inbuffer + offset + 0))) << (8 * 0);
+      u_misc2.base |= ((uint32_t) (*(inbuffer + offset + 1))) << (8 * 1);
+      u_misc2.base |= ((uint32_t) (*(inbuffer + offset + 2))) << (8 * 2);
+      u_misc2.base |= ((uint32_t) (*(inbuffer + offset + 3))) << (8 * 3);
+      this->misc2 = u_misc2.real;
+      offset += sizeof(this->misc2);
      return offset;
     }
 
     const char * getType(){ return "command2ros/MovementCommand"; };
-    const char * getMD5(){ return "62f81c30816c871b5beea98372924f12"; };
+    const char * getMD5(){ return "4d53d58ab1133b4758635512ae9b0bf6"; };
 
   };
 
