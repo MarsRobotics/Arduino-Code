@@ -25,11 +25,13 @@ const bool TEST_MOTORS = false;
 const bool CALIBRATE_ENCODER = false;
 const bool TEST_STEPPERS = false;
 const bool PRINT_ENCODERS = false;
+const bool TEST_BUCKET_CHAIN = false;//ramp up from 500 delay to 250 delay (change DIG_SPEED to change the speed)
+const bool TEST_BUCKET_CHAIN_SLOW = false;//safe route which stays at 500 delay
 const int ENCODER_TO_CALIBRATE = 1;//0-2 from front to back.
 const bool CALIBRATE_DIRECTION = false;//true for positive, false for negative
 const int STEPPER_TO_TEST = 0;//0 is allowed for both boxes. 1 and 2 are only allowed for left box (ARDUINO_NUM 0)
 
-const int ARDUINO_NUM = 1;//0 is left arduino, 1 is right.
+const int ARDUINO_NUM = 0;//0 is left arduino, 1 is right.
 
 //In order to output human readable, useful data goes on the Serial Monitor
 //Control for the Sabertooths goes on pin 14.
@@ -70,7 +72,7 @@ const int ENCODER_PINS[3] = {A0, A1, A2};
 const float SPEED_ADJUST[2][6] = {{1, 1, 1,  //Left Drive
                                    1, -1, -1}, //Left Art
                                   {1, 1, 1,  //Right Drive
-                                   1, 1, 1}};//Right Art
+                                   1, 1, -1}};//Right Art
 //If the motors are wired backwards to how we expect,
 //change the corresponding float to negative.
 
@@ -89,9 +91,9 @@ const int ARTICULATION = 2;//articulation motors are on M2
 //all the pre-set speeds which we run the motors at
 const int DRIVE_SPEED = 50;//50/127 default speed for drive motors
 const int TURN_SPEED = 50;//50/127 default speed for articulation motors
-const int DIG_SPEED = 25;//25 microsecond pulse frequency (it runs through a 20:1 gear ratio
+const int DIG_SPEED = 250;//25 microsecond pulse frequency (it runs through a 20:1 gear ratio
 const int RAISE_SPEED = 500;//100 microsecond pulse frequency
-const int MOVE_CONVEYOR_SPEED = 500;
+const int MOVE_CONVEYOR_SPEED = 250;
 const int CONVEYOR_SPEED = 50;//50/127
 const int CAMERA_SPEED = 25;//25/127
 
@@ -122,8 +124,8 @@ ros::Subscriber<manual::SimpleCommand> sub("MovementCommand", messageCb );
 
 void setup() {
   nh.initNode();
-  nh.subscribe(sub);
-  nh.advertise(movementFeedback);
+  //nh.subscribe(sub);
+  //nh.advertise(movementFeedback);
   SWSerial.begin(9600);
   Serial.begin(9600);//Used for human-readable feedback. Open Serial Monitor to view.
   pinMode(STEPPER_PUL[0], OUTPUT);//Initialize all the Stepper motor pins
@@ -149,6 +151,10 @@ void setup() {
     calibrateEncoder(ENCODER_TO_CALIBRATE, CALIBRATE_DIRECTION);
   if (TEST_STEPPERS)
     testStepper(STEPPER_TO_TEST);
+  if (TEST_BUCKET_CHAIN)
+    testBucketChain();
+  if (TEST_BUCKET_CHAIN_SLOW)
+    testBucketChainSlow();
   if(PRINT_ENCODERS)
     while(true)
       printEncoders();
@@ -210,12 +216,16 @@ void testDrive(int vel){
  * Tests the specified stepper by running it forward for 3200 steps (usually 8 revs) and then backward for 5000 steps
  */
 void testStepper(int controller) {
-  for (int i = 0; i < 1600; i++) {
-    runStepperMotor(controller, true);
-  }
-  for (int i = 0; i < 3200; i++) {
-    runStepperMotor(controller, false);
-  }
+  //runStepperMotor(controller, 1000, true);
+  runStepperMotor(controller, 1000, false);
+}
+
+void testBucketChain(){
+  runStepperMotor(2, 100000, false);
+}
+
+void testBucketChainSlow(){
+  runStepperSlow(2, 10000, false);
 }
 
 /**
@@ -357,29 +367,61 @@ void runWheelMotor(int controller, int motorNum, int vel){
    method to run a stepper
    range is 0 to 200kHZ pulse frequency.
 */
-void runStepperMotor(int stepper, bool dir) {
-  int d;
+void runStepperMotor(int stepper, int steps, bool dir) {
+  int finalD;
+  int d = 500;
   switch (stepper) {//sets the pulse frequency (speed) based on which stepper we are running
     case 0:
-      d = RAISE_SPEED;
+      finalD = RAISE_SPEED;
       break;
     case 1:
-      d = MOVE_CONVEYOR_SPEED;
+      finalD = MOVE_CONVEYOR_SPEED;
       break;
     case 2:
-      d = DIG_SPEED;
+      finalD = DIG_SPEED;
       break;
   }
+  if(d < finalD)
+    d = finalD;
   digitalWrite(STEPPER_ENA[stepper], LOW);//enable the stepper (active-low)
   if (!dir) //control it to turn CW or CCW
     digitalWrite(STEPPER_DIR[stepper], HIGH);
   else
     digitalWrite(STEPPER_DIR[stepper], LOW);
+  int count = 0;
+  for(int i = 0; i < steps; i++){
+    if(count % 50 == 0 && d > finalD){
+      d -= 1;
+    }
+    stepperHelper(stepper, d);
+    count++;
+  }
+  digitalWrite(STEPPER_ENA[stepper], HIGH);
+}
+
+void stepperHelper(int stepper, int d){
   digitalWrite(STEPPER_PUL[stepper], HIGH);//pulse with a frequency of 1/RAISE_SPEED
   delayMicroseconds(d);
   digitalWrite(STEPPER_PUL[stepper], LOW);
   delayMicroseconds(d);
-  digitalWrite(STEPPER_ENA[stepper], HIGH);//disable the stepper
+}
+
+void runStepperSlow(int stepper, int steps, bool dir){
+  digitalWrite(STEPPER_ENA[stepper], LOW);//enable the stepper (active-low)
+  if (!dir) //control it to turn CW or CCW
+    digitalWrite(STEPPER_DIR[stepper], HIGH);
+  else
+    digitalWrite(STEPPER_DIR[stepper], LOW);
+  for(int i = 0; i < steps; i++)
+    stepperSlowHelper(stepper);
+  digitalWrite(STEPPER_ENA[stepper], HIGH);
+}
+
+void stepperSlowHelper(int stepper){
+  digitalWrite(STEPPER_PUL[stepper], HIGH);//pulse with a frequency of 1/RAISE_SPEED
+  delayMicroseconds(500);
+  digitalWrite(STEPPER_PUL[stepper], LOW);
+  delayMicroseconds(500);
 }
 
 /**
