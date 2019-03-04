@@ -103,6 +103,8 @@ const int DRIVE_STRAIGHT = 2;//or pack_out
 const int TURN = 3;
 const int DRIVE_SIDE = 4;
 
+bool stepperDisable = false;
+
 /*ROS setup*/
 
 ros::NodeHandle nh;
@@ -142,10 +144,7 @@ void messageCb( const manual::SimpleCommand& msg){
     case 7:
       //STOP ALL MOTORS
       feedbackMessage.message = "stop";
-      for (int i = 0; i < 3; i++) {//make sure all the drive motors are off
-        runWheelMotor(i, DRIVE, 0);
-        runWheelMotor(i, ARTICULATION, 0);
-      }
+      fullStop();
     case 8:
       //pack in 
       //feedbackMessage.message = "pack in";
@@ -330,6 +329,7 @@ void runConveyor(){
 }
 
 void fullStop(){
+  stepperDisable = true;
   for(int i = 0; i < 3; i++){
     runWheelMotor(i, DRIVE, 0);//turn off the drive and articulation motors
     runWheelMotor(i, ARTICULATION, 0);
@@ -491,6 +491,7 @@ void runWheelMotor(int controller, int motorNum, int vel){
    range is 0 to 200kHZ pulse frequency.
 */
 void runStepperMotor(int stepper, int steps, bool dir) {
+  stepperDisable = false;
   int finalD;
   int d = 500;
   switch (stepper) {//sets the pulse frequency (speed) based on which stepper we are running
@@ -516,6 +517,9 @@ void runStepperMotor(int stepper, int steps, bool dir) {
     if(count % 50 == 0 && d > finalD){
       d -= 1;
     }
+    nh.spinOnce();//make sure that messages can still be processed even while running the stepper
+    if(stepperDisable)
+      break;
     stepperHelper(stepper, d);
     count++;
   }
@@ -530,12 +534,16 @@ void stepperHelper(int stepper, int d){
 }
 
 void runStepperSlow(int stepper, int steps, bool dir){
+  stepperDisable = false;
   digitalWrite(STEPPER_ENA[stepper], LOW);//enable the stepper (active-low)
   if (!dir) //control it to turn CW or CCW
     digitalWrite(STEPPER_DIR[stepper], HIGH);
   else
     digitalWrite(STEPPER_DIR[stepper], LOW);
   for(int i = 0; i < steps; i++)
+    if(stepperDisable)
+      break;
+    nh.spinOnce();
     stepperSlowHelper(stepper);
   digitalWrite(STEPPER_ENA[stepper], HIGH);
 }
