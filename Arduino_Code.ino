@@ -99,7 +99,7 @@ const int CAMERA_SPEED = 25;//25/127
 
 //commands
 const int PACK_IN = 1;
-const int DRIVE_STRAIGHT = 2;
+const int DRIVE_STRAIGHT = 2;//or pack_out
 const int TURN = 3;
 const int DRIVE_SIDE = 4;
 
@@ -163,23 +163,32 @@ void messageCb( const manual::SimpleCommand& msg){
       testBucketChain();
       feedbackMessage.message = "turn bucket chain fast";
     case 11: 
-      //raise bucket chain 
-      //feedbackMessage.message = "raise bucket chain";
-      feedbackMessage.message = "not implemented";
+      //raise bucket chain
+      testRaiseBucketChain();
+      feedbackMessage.message = "raise bucket chain";
     case 12: 
-      //lower bucket chain 
-      //feedbackMessage.message = "lower bucket chain";
-      feedbackMessage.message = "not implemented";
+      //lower bucket chain
+      testLowerBucketChain(); 
+      feedbackMessage.message = "lower bucket chain";
     case 13: 
-      //raise conveyor  
+      //raise conveyor
+      raiseConveyor();
       feedbackMessage.message = "raise conveyor ";
     case 14: 
-      //lower conveyor  
+      //lower conveyor
+      lowerConveyor();  
       //feedbackMessage.message = "lower conveyor ";
-      feedbackMessage.message = "not implemented";
     case 15: 
-      //turn conveyor  
-      //feedbackMessage.message = "turn conveyor ";
+      //turn conveyor 
+      runConveyor();
+      feedbackMessage.message = "turn conveyor ";
+    case 17:
+      //raise scissor lift
+      //feedbackMessage.message = "raise scissor lift ";
+      feedbackMessage.message = "not implemented";
+    case 18:
+      //lower scissor lift
+      //feedbackMessage.message = "lower scissor lift ";
       feedbackMessage.message = "not implemented";
     case 999:
       //test
@@ -292,12 +301,46 @@ void testStepper(int controller) {
   runStepperMotor(controller, 1000, false);
 }
 
+void testLowerBucketChain(){
+  runStepperMotor(0, 3000, true);
+}
+
+void testRaiseBucketChain(){
+  runStepperMotor(0, 3000, false);
+}
+
 void testBucketChain(){
   runStepperMotor(2, 10000, false);
 }
 
 void testBucketChainSlow(){
   runStepperSlow(2, 10000, false);
+}
+
+void raiseConveyor(){
+  runStepperMotor(1, 3000, true);
+}
+
+void lowerConveyor(){
+  runStepperMotor(1, 3000, false);
+}
+
+void runConveyor(){
+  runConveyorMotor(0, CONVEYOR_SPEED);
+}
+
+void fullStop(){
+  for(int i = 0; i < 3; i++){
+    runWheelMotor(i, DRIVE, 0);//turn off the drive and articulation motors
+    runWheelMotor(i, ARTICULATION, 0);
+    if(ARDUINO_NUM == 0)
+      digitalWrite(STEPPER_ENA[i], HIGH);//disable the steppers
+  }
+  if(ARDUINO_NUM == 1)
+    digitalWrite(STEPPER_ENA[0], HIGH);
+  runConveyorMotor(0, 0);//stop the conveyor and scissor lift
+  runConveyorMotor(1, 0);
+  
 }
 
 /**
@@ -333,6 +376,14 @@ void driveStraight(bool forward){
   for(int i = 0; i < 3; i++){
     runWheelMotor(i, DRIVE, driveSpeed);
   }
+}
+
+void packIn(){
+  alignWheels(1);
+}
+
+void packOut(){
+  alignWheels(2);
 }
 
 /**
@@ -500,17 +551,6 @@ void stepperSlowHelper(int stepper){
  * method to run the conveyor motor and the camera mount
  * runs on a sabertooth, just like the wheels, so -127 - 127 range
  */
-void runConveyorMotor(int motorNum, bool dir) {
-  if (motorNum == 0) {//conveyor
-    if (dir)
-      ConveyorMotor.motor(motorNum, CONVEYOR_SPEED);
-    else
-      ConveyorMotor.motor(motorNum, -CONVEYOR_SPEED);
-  }
-  else {//camera
-    if (dir)
-      ConveyorMotor.motor(motorNum, CAMERA_SPEED);
-    else
-      ConveyorMotor.motor(motorNum, -CAMERA_SPEED);
-  }
+void runConveyorMotor(int motorNum, int vel) {
+  ConveyorMotor.motor(motorNum, vel);
 }
