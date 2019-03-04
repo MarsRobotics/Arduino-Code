@@ -31,7 +31,7 @@ const int ENCODER_TO_CALIBRATE = 1;//0-2 from front to back.
 const bool CALIBRATE_DIRECTION = false;//true for positive, false for negative
 const int STEPPER_TO_TEST = 0;//0 is allowed for both boxes. 1 and 2 are only allowed for left box (ARDUINO_NUM 0)
 
-const int ARDUINO_NUM = 0;//0 is left arduino, 1 is right.
+const int ARDUINO_NUM = 1;//0 is left arduino, 1 is right.
 
 //In order to output human readable, useful data goes on the Serial Monitor
 //Control for the Sabertooths goes on pin 14.
@@ -68,7 +68,7 @@ const int TRUE_ZERO[2][3] = {{0, 360, 640},
 //The analog pins where the encoders are plugged into
 const int ENCODER_PINS[3] = {A0, A1, A2};
 
-//the factor to adjust the drive motors' speeds by to try and keep them turning at the same speed.
+//the factor to adjust the drive motors' speeds by to try and keep them turning at the same speed. Order is front to back.
 const float SPEED_ADJUST[2][6] = {{1, 1, 1,  //Left Drive
                                    1, -1, -1}, //Left Art
                                   {1, 1, 1,  //Right Drive
@@ -233,7 +233,7 @@ void testBucketChainSlow(){
  * @param right whether we want to turn right or left
  */
 void turnInPlace(bool right){
-  alignWheels(3);
+  //alignWheels(3);
   int driveSpeed = DRIVE_SPEED;
   if(right && ARDUINO_NUM == 1 || !right && ARDUINO_NUM == 0)
     driveSpeed = -driveSpeed;
@@ -246,7 +246,7 @@ void turnInPlace(bool right){
    function to turn the robot while moving
 */
 void turnDrive(bool right, bool forward) {
-
+  
 }
 
 /**
@@ -254,7 +254,7 @@ void turnDrive(bool right, bool forward) {
  * @param forward whether we want to go forward or backward
  */
 void driveStraight(bool forward){
-  alignWheels(2);
+  //alignWheels(2);
   int driveSpeed = DRIVE_SPEED;
   if(!forward)
     driveSpeed = -driveSpeed;
