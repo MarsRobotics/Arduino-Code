@@ -112,11 +112,79 @@ ros::Publisher movementFeedback ("MovementFeedback", &feedbackMessage);
 void messageCb( const manual::SimpleCommand& msg){
   feedbackMessage.status = msg.data;
   feedbackMessage.message = "recieved a command";
+  feedbackMessage.status = msg.data;
   movementFeedback.publish(&feedbackMessage);
-  //handle command
-  runWheelMotor(0, DRIVE, 50);
-  delay(500);
-  runWheelMotor(0, DRIVE, 0);
+  switch(msg.data){
+    case 1:
+      driveStraight(true); 
+      feedbackMessage.message = "drive forward";
+    case 2:
+      driveStraight(false);
+      feedbackMessage.message = "drive backward";
+    case 3:
+      //drive forward & turn articulation motors left
+      turnDrive(false, true);
+      //feedbackMessage.message = "drive & turn left";
+      feedbackMessage.message = "not implemented";
+    case 4:
+      //drive forward & turn articulation motors right
+      turnDrive(true, true);
+      //feedbackMessage.message = "drive & turn right";
+      feedbackMessage.message = "not implemented";
+    case 5:
+      //just turn articulation motors left
+      turnInPlace(false);
+      feedbackMessage.message = "articulate left";
+    case 6:
+      //just turn articulation motors right
+      turnInPlace(true);
+      feedbackMessage.message = "articulate right";
+    case 7:
+      //STOP ALL MOTORS
+      feedbackMessage.message = "stop";
+      for (int i = 0; i < 3; i++) {//make sure all the drive motors are off
+        runWheelMotor(i, DRIVE, 0);
+        runWheelMotor(i, ARTICULATION, 0);
+      }
+    case 8:
+      //pack in 
+      //feedbackMessage.message = "pack in";
+      feedbackMessage.message = "not implemented";
+    case 9:
+      //pack out
+      //feedbackMessage.message = "pack out";
+      feedbackMessage.message = "not implemented";
+    case 10: 
+      //turn bucket chain 
+      testBucketChain();
+      feedbackMessage.message = "turn bucket chain";
+    case 11: 
+      //raise bucket chain 
+      //feedbackMessage.message = "raise bucket chain";
+      feedbackMessage.message = "not implemented";
+    case 12: 
+      //lower bucket chain 
+      //feedbackMessage.message = "lower bucket chain";
+      feedbackMessage.message = "not implemented";
+    case 13: 
+      //raise conveyor  
+      feedbackMessage.message = "raise conveyor ";
+    case 14: 
+      //lower conveyor  
+      //feedbackMessage.message = "lower conveyor ";
+      feedbackMessage.message = "not implemented";
+    case 15: 
+      //turn conveyor  
+      //feedbackMessage.message = "turn conveyor ";
+      feedbackMessage.message = "not implemented";
+    case 999:
+      //test
+      runWheelMotor(0, DRIVE, 50);
+      delay(500);
+      runWheelMotor(0, DRIVE, 0);
+      feedbackMessage.message = "test";
+  }
+  movementFeedback.publish(&feedbackMessage);
   nh.spinOnce();
 }
 
@@ -221,7 +289,7 @@ void testStepper(int controller) {
 }
 
 void testBucketChain(){
-  runStepperMotor(2, 100000, false);
+  runStepperMotor(2, 10000, false);
 }
 
 void testBucketChainSlow(){
