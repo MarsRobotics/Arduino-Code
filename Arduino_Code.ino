@@ -155,9 +155,13 @@ void messageCb( const manual::SimpleCommand& msg){
       //feedbackMessage.message = "pack out";
       feedbackMessage.message = "not implemented";
     case 10: 
-      //turn bucket chain 
-      testBucketChain();
+      //turn bucket chain slow-- this is the 'safer' method
+      testBucketChainSlow();
       feedbackMessage.message = "turn bucket chain";
+    case 16: 
+      //turn bucket chain faster with ramp up
+      testBucketChain();
+      feedbackMessage.message = "turn bucket chain fast";
     case 11: 
       //raise bucket chain 
       //feedbackMessage.message = "raise bucket chain";
