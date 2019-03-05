@@ -204,8 +204,8 @@ ros::Subscriber<manual::SimpleCommand> sub("MovementCommand", messageCb );
 
 void setup() {
   nh.initNode();
-  //nh.subscribe(sub);
-  //nh.advertise(movementFeedback);
+  nh.subscribe(sub);
+  nh.advertise(movementFeedback);
   SWSerial.begin(9600);
   Serial.begin(9600);//Used for human-readable feedback. Open Serial Monitor to view.
   pinMode(STEPPER_PUL[0], OUTPUT);//Initialize all the Stepper motor pins
