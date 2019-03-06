@@ -27,6 +27,8 @@ const bool TEST_STEPPERS = false;
 const bool PRINT_ENCODERS = false;
 const bool TEST_BUCKET_CHAIN = false;//ramp up from 500 delay to 250 delay (change DIG_SPEED to change the speed)
 const bool TEST_BUCKET_CHAIN_SLOW = false;//safe route which stays at 500 delay
+const bool TEST_CONVEYOR_RAISE = false;
+const bool TEST_CONVEYOR_TURN = false;
 const int ENCODER_TO_CALIBRATE = 1;//0-2 from front to back.
 const bool CALIBRATE_DIRECTION = false;//true for positive, false for negative
 const int STEPPER_TO_TEST = 0;//0 is allowed for both boxes. 1 and 2 are only allowed for left box (ARDUINO_NUM 0)
@@ -238,6 +240,11 @@ void setup() {
   if(PRINT_ENCODERS)
     while(true)
       printEncoders();
+  if (TEST_CONVEYOR_RAISE)
+    testConveyorRaise();
+  if (TEST_CONVEYOR_TURN)
+    runConveyor();
+  
   //driveStraight(true);
 }
 
@@ -314,6 +321,11 @@ void testBucketChain(){
 
 void testBucketChainSlow(){
   runStepperSlow(2, 10000, false);
+}
+
+void testConveyorRaise(){
+  raiseConveyor();
+  lowerConveyor();
 }
 
 void raiseConveyor(){
@@ -491,6 +503,8 @@ void runWheelMotor(int controller, int motorNum, int vel){
    range is 0 to 200kHZ pulse frequency.
 */
 void runStepperMotor(int stepper, int steps, bool dir) {
+  if(stepper > 0 && ARDUINO_NUM == 1)
+    return;
   stepperDisable = false;
   int finalD;
   int d = 500;
@@ -534,6 +548,8 @@ void stepperHelper(int stepper, int d){
 }
 
 void runStepperSlow(int stepper, int steps, bool dir){
+  if(stepper > 0 && ARDUINO_NUM == 1)
+    return;
   stepperDisable = false;
   digitalWrite(STEPPER_ENA[stepper], LOW);//enable the stepper (active-low)
   if (!dir) //control it to turn CW or CCW
@@ -560,5 +576,6 @@ void stepperSlowHelper(int stepper){
  * runs on a sabertooth, just like the wheels, so -127 - 127 range
  */
 void runConveyorMotor(int motorNum, int vel) {
-  ConveyorMotor.motor(motorNum, vel);
+  if(ARDUINO_NUM == 1)
+    ConveyorMotor.motor(motorNum, vel);
 }
