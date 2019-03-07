@@ -25,10 +25,14 @@ const bool TEST_MOTORS = false;
 const bool CALIBRATE_ENCODER = false;
 const bool TEST_STEPPERS = false;
 const bool PRINT_ENCODERS = false;
+const bool TEST_RAISE_LOWER_BUCKET_CHAIN = false;
 const bool TEST_BUCKET_CHAIN = false;//ramp up from 500 delay to 250 delay (change DIG_SPEED to change the speed)
 const bool TEST_BUCKET_CHAIN_SLOW = false;//safe route which stays at 500 delay
 const bool TEST_CONVEYOR_RAISE = false;
 const bool TEST_CONVEYOR_TURN = false;
+const bool TEST_SIX_DRIVE = false;//only works if we have one serial line running to all six motor controllers.
+const bool TEST_LOWER_DIG = false;
+const bool TEST_RAISE_DUMP = false;
 const int ENCODER_TO_CALIBRATE = 1;//0-2 from front to back.
 const bool CALIBRATE_DIRECTION = false;//true for positive, false for negative
 const int STEPPER_TO_TEST = 0;//0 is allowed for both boxes. 1 and 2 are only allowed for left box (ARDUINO_NUM 0)
@@ -79,7 +83,7 @@ const float SPEED_ADJUST[2][6] = {{1, 1, 1,  //Left Drive
 //change the corresponding float to negative.
 
 //Stepper motor controller pins.
-const int STEPPER_PUL[3] = {11, 12, 13};//0 is conveyor, 1 is raise/lower bucket chain, 2 is power bucket chain
+const int STEPPER_PUL[3] = {11, 12, 13};//0 is raise/lower bucket chain, 1 is conveyor, 2 is power bucket chain
 const int STEPPER_DIR[3] = {8, 9, 10};
 const int STEPPER_ENA[3] = {5, 6, 7};
 
@@ -233,6 +237,8 @@ void setup() {
     calibrateEncoder(ENCODER_TO_CALIBRATE, CALIBRATE_DIRECTION);
   if (TEST_STEPPERS)
     testStepper(STEPPER_TO_TEST);
+  if (TEST_RAISE_LOWER_BUCKET_CHAIN)
+      testRaiseBucketChain();
   if (TEST_BUCKET_CHAIN)
     testBucketChain();
   if (TEST_BUCKET_CHAIN_SLOW)
@@ -244,7 +250,12 @@ void setup() {
     testConveyorRaise();
   if (TEST_CONVEYOR_TURN)
     runConveyor();
-  
+  if (TEST_SIX_DRIVE)
+    testSixDrive();
+  if(TEST_LOWER_DIG)
+    digLower();
+  if(TEST_RAISE_DUMP)
+    dumpRaise();
   //driveStraight(true);
 }
 
@@ -307,6 +318,11 @@ void testStepper(int controller) {
   runStepperMotor(controller, 1000, false);
 }
 
+void testBucketRaise(){
+  testLowerBucketChain();
+  testRaiseBucketChain();
+}
+
 void testLowerBucketChain(){
   runStepperMotor(0, 3000, true);
 }
@@ -338,6 +354,32 @@ void lowerConveyor(){
 
 void runConveyor(){
   runConveyorMotor(0, CONVEYOR_SPEED);
+}
+
+void digLower(){
+  digitalWrite(STEPPER_ENA[0], LOW);
+  digitalWrite(STEPPER_ENA[2], LOW);
+  digitalWrite(STEPPER_DIR[0], LOW);
+  digitalWrite(STEPPER_DIR[2], HIGH);
+  for(int i = 0; i < 100000; i++){
+    digitalWrite(STEPPER_PUL[0], HIGH);
+    digitalWrite(STEPPER_PUL[2], HIGH);
+    delayMicroseconds(500);
+    digitalWrite(STEPPER_PUL[0], LOW);
+    digitalWrite(STEPPER_PUL[2], LOW);
+    delayMicroseconds(500);
+  }
+  digitalWrite(STEPPER_ENA[0], HIGH);
+  digitalWrite(STEPPER_ENA[2], HIGH);
+}
+
+void dumpRaise(){
+  bool dir = false;//CHANGE FROM FALSE TO TRUE IF THE CONVEYOR IS MOVING THE WRONG DIRECTION
+  runStepperSlow(1, 15000, dir);
+  runConveyor();
+  delay(60000);
+  runConveyorMotor(0, 0);
+  runStepperSlow(1, 15000, !dir);
 }
 
 void fullStop(){
@@ -387,6 +429,13 @@ void driveStraight(bool forward){
     driveSpeed = -driveSpeed;
   for(int i = 0; i < 3; i++){
     runWheelMotor(i, DRIVE, driveSpeed);
+  }
+}
+
+void testSixDrive(){
+  for(int i = 0; i < 3; i++){
+    ST[0][i].motor(DRIVE, SPEED_ADJUST[0][i] * DRIVE_SPEED);
+    ST[1][i].motor(DRIVE, SPEED_ADJUST[1][i] * DRIVE_SPEED);
   }
 }
 
