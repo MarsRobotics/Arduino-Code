@@ -37,7 +37,7 @@ const int ENCODER_TO_CALIBRATE = 1;//0-2 from front to back.
 const bool CALIBRATE_DIRECTION = false;//true for positive, false for negative
 const int STEPPER_TO_TEST = 0;//0 is allowed for both boxes. 1 and 2 are only allowed for left box (ARDUINO_NUM 0)
 
-const int ARDUINO_NUM = 1;//0 is left arduino, 1 is right.
+const int ARDUINO_NUM = 0;//0 is left arduino, 1 is right.
 
 //In order to output human readable, useful data goes on the Serial Monitor
 //Control for the Sabertooths goes on pin 14.
@@ -319,8 +319,8 @@ void testStepper(int controller) {
 }
 
 void testBucketRaise(){
-  testLowerBucketChain();
   testRaiseBucketChain();
+  testLowerBucketChain();
 }
 
 void testLowerBucketChain(){
@@ -336,7 +336,7 @@ void testBucketChain(){
 }
 
 void testBucketChainSlow(){
-  runStepperSlow(2, 10000, false);
+  runStepperSlow(2, 10000, true);
 }
 
 void testConveyorRaise(){
@@ -605,11 +605,13 @@ void runStepperSlow(int stepper, int steps, bool dir){
     digitalWrite(STEPPER_DIR[stepper], HIGH);
   else
     digitalWrite(STEPPER_DIR[stepper], LOW);
-  for(int i = 0; i < steps; i++)
+  for(int i = 0; i < steps; i++){
+  //while(true){
     if(stepperDisable)
       break;
     nh.spinOnce();
     stepperSlowHelper(stepper);
+  }
   digitalWrite(STEPPER_ENA[stepper], HIGH);
 }
 
