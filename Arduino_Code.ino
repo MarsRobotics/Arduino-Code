@@ -52,7 +52,7 @@ Sabertooth ST[2][3] = {{Sabertooth(128, SWSerial), Sabertooth(133, SWSerial), Sa
 //6 motor controllers (LF, LM, LB, RF, RM, RB)
 
 //Array of booleans to tell if a particular wheel is supposed to run or not
-boolean enabled[2][3] = {{true, true, true},
+boolean enabled[2][3] = {{false, true, true},
                          {true, true, true}};
 
 //Angles for wheels to be in when in different states
@@ -153,12 +153,12 @@ void messageCb( const manual::SimpleCommand& msg){
       fullStop();
     case 8:
       //pack in 
-      //feedbackMessage.message = "pack in";
-      feedbackMessage.message = "not implemented";
+      packIn();
+      feedbackMessage.message = "pack in";
     case 9:
       //pack out
-      //feedbackMessage.message = "pack out";
-      feedbackMessage.message = "not implemented";
+      packOut();
+      feedbackMessage.message = "pack out";
     case 10: 
       //turn bucket chain slow-- this is the 'safer' method
       testBucketChainSlow();
@@ -256,7 +256,6 @@ void setup() {
     digLower();
   if(TEST_RAISE_DUMP)
     dumpRaise();
-  //driveStraight(true);
 }
 
 void loop() {
@@ -402,7 +401,7 @@ void fullStop(){
  * @param right whether we want to turn right or left
  */
 void turnInPlace(bool right){
-  //alignWheels(3);
+  alignWheels(3);
   int driveSpeed = DRIVE_SPEED;
   if(right && ARDUINO_NUM == 1 || !right && ARDUINO_NUM == 0)
     driveSpeed = -driveSpeed;
@@ -423,7 +422,7 @@ void turnDrive(bool right, bool forward) {
  * @param forward whether we want to go forward or backward
  */
 void driveStraight(bool forward){
-  //alignWheels(2);
+  alignWheels(2);
   int driveSpeed = DRIVE_SPEED;
   if(!forward)
     driveSpeed = -driveSpeed;
@@ -471,16 +470,20 @@ void alignWheels(int commandNum){
   int lastDiff[3];
   bool lastDir[3];
   while(!complete){
-    if(DEBUG)
-      printEncoders();
     for(int i = 0; i < 3; i++){
       if(aligned[i])
         continue;
       int diff = readEncoder(i) - angles[i];
+      if(DEBUG){
+        Serial.print(diff);
+        Serial.print("    ");
+      }
       bool cw = true;
-      if(abs(diff) < 14)//allow for 14 encoder counts of error (~5 degrees)
+      if(abs(diff) < 14){//allow for 14 encoder counts of error (~5 degrees)
+        runWheelMotor(i, ARTICULATION, 0);
+        runWheelMotor(i, DRIVE, 0);
         aligned[i] = true;        
-      
+      }
       else if(abs(diff) <= 128){//if we are within 128 encoder counts (45 degrees), switch to fine-tuning mode
         cw = lastDir[i];
         if(abs(diff) > abs(lastDiff[i]))//if we are farther away from our target than we were last loop, then reverse the direction we turn the wheel
@@ -520,6 +523,8 @@ void alignWheels(int commandNum){
       lastDir[i] = cw;
       lastDiff[i] = diff;
     }
+    if(DEBUG)
+      Serial.println();
     if(aligned[0] && aligned[1] && aligned[2])
       complete = true;
   }
