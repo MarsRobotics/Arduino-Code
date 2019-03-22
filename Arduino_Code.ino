@@ -33,7 +33,7 @@ const bool TEST_CONVEYOR_TURN = false;
 const bool TEST_SIX_DRIVE = false;//only works if we have one serial line running to all six motor controllers.
 const bool TEST_LOWER_DIG = false;
 const bool TEST_RAISE_DUMP = false;
-const int ENCODER_TO_CALIBRATE = 1;//0-2 from front to back.
+const int ENCODER_TO_CALIBRATE = 0;//0-2 from front to back.
 const bool CALIBRATE_DIRECTION = false;//true for positive, false for negative
 const int STEPPER_TO_TEST = 0;//0 is allowed for both boxes. 1 and 2 are only allowed for left box (ARDUINO_NUM 0)
 
@@ -44,7 +44,7 @@ const int ARDUINO_NUM = 0;//0 is left arduino, 1 is right.
 SoftwareSerial SWSerial(NOT_A_PIN, 14);
 
 /**
- * split into two arrays of length 3 because each Arduino gets one array.
+ * split into two arraUys of length 3 because each Arduino gets one array.
  * The array that the Arduino gets in decided by ARDUINO_NUM. This pattern continues for all constants
  */
 Sabertooth ST[2][3] = {{Sabertooth(128, SWSerial), Sabertooth(133, SWSerial), Sabertooth(129, SWSerial)},
@@ -52,14 +52,14 @@ Sabertooth ST[2][3] = {{Sabertooth(128, SWSerial), Sabertooth(133, SWSerial), Sa
 //6 motor controllers (LF, LM, LB, RF, RM, RB)
 
 //Array of booleans to tell if a particular wheel is supposed to run or not
-boolean enabled[2][3] = {{false, true, true},
-                         {true, true, true}};
+boolean enabled[2][3] = {{true, true, true},
+                         {false, true, true}};
 
 //Angles for wheels to be in when in different states
 const int PACKED_ANGLES[3] = {0, 0, 0};
-const int TURN_ANGLES[3] = {384, 512, 384};
+const int TURN_ANGLES[3] = {384, 512, 640};
 const int DRIVE_ANGLES[3] = {512, 512, 512};
-const int SIDE_DRIVE_ANGLES[3] = {256, 256, 256};
+const int SIDE_DRIVE_ANGLES[3] = {256, 256, 768};
 
 //Left wheels from front to back
 //turn CCW, CW, CW
@@ -69,16 +69,16 @@ const bool TURN_CW[3] = {false, false, true};
 //True zero of the encoders.
 //Zero is taken to be the packed in state.
 const int TRUE_ZERO[2][3] = {{0, 360, 640},
-                             {450, 470, 90}};
+                             {450, 420, 90}};
 
 //The analog pins where the encoders are plugged into
 const int ENCODER_PINS[3] = {A0, A1, A2};
 
 //the factor to adjust the drive motors' speeds by to try and keep them turning at the same speed. Order is front to back.
-const float SPEED_ADJUST[2][6] = {{1, 1, 1,  //Left Drive
-                                   1, -1, -1}, //Left Art
-                                  {1, 1, 1,  //Right Drive
-                                   1, 1, -1}};//Right Art
+const float SPEED_ADJUST[2][6] = {{1, -1, 1,  //Left Drive
+                                   -2, 0.8, -1}, //Left Art
+                                  {1, -1, -1,  //Right Drive
+                                   1, -1, -1}};//Right Art
 //If the motors are wired backwards to how we expect,
 //change the corresponding float to negative.
 
@@ -99,7 +99,7 @@ const int DRIVE_SPEED = 50;//50/127 default speed for drive motors
 const int TURN_SPEED = 50;//50/127 default speed for articulation motors
 const int DIG_SPEED = 250;//25 microsecond pulse frequency (it runs through a 20:1 gear ratio
 const int RAISE_SPEED = 500;//100 microsecond pulse frequency
-const int MOVE_CONVEYOR_SPEED = 250;
+const int MOVE_CONVEYOR_SPEED = 500;
 const int CONVEYOR_SPEED = 50;//50/127
 const int CAMERA_SPEED = 25;//25/127
 
@@ -109,7 +109,7 @@ const int DRIVE_STRAIGHT = 2;//or pack_out
 const int TURN = 3;
 const int DRIVE_SIDE = 4;
 
-bool stepperDisable = false;
+bool motorDisable = false;
 
 /*ROS setup*/
 
@@ -122,6 +122,7 @@ void messageCb( const manual::SimpleCommand& msg){
   feedbackMessage.message = "recieved a command";
   feedbackMessage.status = msg.data;
   movementFeedback.publish(&feedbackMessage);
+  motorDisable = false;
   switch(msg.data){
     case 1:
       driveStraight(true); 
@@ -238,7 +239,7 @@ void setup() {
   if (TEST_STEPPERS)
     testStepper(STEPPER_TO_TEST);
   if (TEST_RAISE_LOWER_BUCKET_CHAIN)
-      testRaiseBucketChain();
+      testBucketRaise();
   if (TEST_BUCKET_CHAIN)
     testBucketChain();
   if (TEST_BUCKET_CHAIN_SLOW)
@@ -318,8 +319,8 @@ void testStepper(int controller) {
 }
 
 void testBucketRaise(){
-  testRaiseBucketChain();
   testLowerBucketChain();
+  testRaiseBucketChain();
 }
 
 void testLowerBucketChain(){
@@ -331,7 +332,7 @@ void testRaiseBucketChain(){
 }
 
 void testBucketChain(){
-  runStepperMotor(2, 10000, false);
+  runStepperMotor(2, 20000, false);
 }
 
 void testBucketChainSlow(){
@@ -382,7 +383,7 @@ void dumpRaise(){
 }
 
 void fullStop(){
-  stepperDisable = true;
+  motorDisable = true;
   for(int i = 0; i < 3; i++){
     runWheelMotor(i, DRIVE, 0);//turn off the drive and articulation motors
     runWheelMotor(i, ARTICULATION, 0);
@@ -456,37 +457,47 @@ void alignWheels(int commandNum){
   int angles[3];
   switch(commandNum){//copy the proper array to angles;
     case 1:
-      memcpy(angles, PACKED_ANGLES, 3);
+      for(int i = 0; i < 3; i++)
+        angles[i] = PACKED_ANGLES[i];
+      break;
     case 2:
-      memcpy(angles, DRIVE_ANGLES, 3);
+      for(int i = 0; i < 3; i++)
+        angles[i] = DRIVE_ANGLES[i];
+      break;
     case 3:
-      memcpy(angles, TURN_ANGLES, 3);
+      for(int i = 0; i < 3; i++)
+        angles[i] = TURN_ANGLES[i];
+      break;
     case 4:
-      memcpy(angles, SIDE_DRIVE_ANGLES, 3);
+      for(int i = 0; i < 3; i++)
+        angles[i] = SIDE_DRIVE_ANGLES[i];
+      break;
   }
   for(int i = 0; i < 3; i++)//if a wheel is disabled, we do not want to try to align it
     if(!enabled[ARDUINO_NUM][i])
       aligned[i] = true;
   int lastDiff[3];
   bool lastDir[3];
-  while(!complete){
+  while(!complete && !motorDisable){
     for(int i = 0; i < 3; i++){
       if(aligned[i])
         continue;
       int diff = readEncoder(i) - angles[i];
       if(DEBUG){
-        Serial.print(diff);
+        Serial.print(readEncoder(i));
+        Serial.print("  ");
+        Serial.print(angles[i]);
         Serial.print("    ");
       }
       bool cw = true;
-      if(abs(diff) < 14){//allow for 14 encoder counts of error (~5 degrees)
+      if(abs(diff) < 7){//allow for 14 encoder counts of error (~5 degrees)
         runWheelMotor(i, ARTICULATION, 0);
         runWheelMotor(i, DRIVE, 0);
-        aligned[i] = true;        
+        aligned[i] = true;
       }
-      else if(abs(diff) <= 128){//if we are within 128 encoder counts (45 degrees), switch to fine-tuning mode
+      else if(abs(diff) <= 64){//if we are within 128 encoder counts (45 degrees), switch to fine-tuning mode
         cw = lastDir[i];
-        if(abs(diff) > abs(lastDiff[i]))//if we are farther away from our target than we were last loop, then reverse the direction we turn the wheel
+        if(abs(diff) > abs(lastDiff[i])+5)//if we are farther away from our target than we were last loop, then reverse the direction we turn the wheel (add 5 to remove the chance that noise is causing this)
           cw = !cw;
         if(cw){
           runWheelMotor(i, ARTICULATION, TURN_SPEED);
@@ -559,7 +570,6 @@ void runWheelMotor(int controller, int motorNum, int vel){
 void runStepperMotor(int stepper, int steps, bool dir) {
   if(stepper > 0 && ARDUINO_NUM == 1)
     return;
-  stepperDisable = false;
   int finalD;
   int d = 500;
   switch (stepper) {//sets the pulse frequency (speed) based on which stepper we are running
@@ -586,7 +596,7 @@ void runStepperMotor(int stepper, int steps, bool dir) {
       d -= 1;
     }
     nh.spinOnce();//make sure that messages can still be processed even while running the stepper
-    if(stepperDisable)
+    if(motorDisable)
       break;
     stepperHelper(stepper, d);
     count++;
@@ -604,7 +614,6 @@ void stepperHelper(int stepper, int d){
 void runStepperSlow(int stepper, int steps, bool dir){
   if(stepper > 0 && ARDUINO_NUM == 1)
     return;
-  stepperDisable = false;
   digitalWrite(STEPPER_ENA[stepper], LOW);//enable the stepper (active-low)
   if (!dir) //control it to turn CW or CCW
     digitalWrite(STEPPER_DIR[stepper], HIGH);
@@ -612,7 +621,7 @@ void runStepperSlow(int stepper, int steps, bool dir){
     digitalWrite(STEPPER_DIR[stepper], LOW);
   for(int i = 0; i < steps; i++){
   //while(true){
-    if(stepperDisable)
+    if(motorDisable)
       break;
     nh.spinOnce();
     stepperSlowHelper(stepper);
