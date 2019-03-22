@@ -20,7 +20,7 @@
 
 //Use for testing and calibrating. For normal operation, make these false.
 //Open Serial Monitor to see details.
-const bool DEBUG = false;
+const bool DEBUG = true;
 const bool TEST_MOTORS = false;
 const bool CALIBRATE_ENCODER = false;
 const bool TEST_STEPPERS = false;
@@ -75,9 +75,9 @@ const int TRUE_ZERO[2][3] = {{0, 360, 640},
 const int ENCODER_PINS[3] = {A0, A1, A2};
 
 //the factor to adjust the drive motors' speeds by to try and keep them turning at the same speed. Order is front to back.
-const float SPEED_ADJUST[2][6] = {{1, -1, 1,  //Left Drive
+const float SPEED_ADJUST[2][6] = {{1, -1, -1,  //Left Drive
                                    -2, 0.8, -1}, //Left Art
-                                  {1, -1, -1,  //Right Drive
+                                  {1, -1, -2,  //Right Drive
                                    1, -1, -1}};//Right Art
 //If the motors are wired backwards to how we expect,
 //change the corresponding float to negative.
@@ -483,8 +483,14 @@ void alignWheels(int commandNum){
         angles[i] = DRIVE_ANGLES[i];
       break;
     case 3:
-      for(int i = 0; i < 3; i++)
-        angles[i] = TURN_ANGLES[i];
+      if(ARDUINO_NUM == 0){
+        for(int i = 0; i < 3; i++)
+          angles[i] = TURN_ANGLES[i];
+      }
+      else{//angles are mirrored across 0-512 axis.
+        for(int i = 2; i >= 0; i--)
+          angles[2-i] = TURN_ANGLES[i];
+      }
       break;
     case 4:
       for(int i = 0; i < 3; i++)
@@ -522,17 +528,17 @@ void alignWheels(int commandNum){
           cw = !cw;
         if(cw){
           runWheelMotor(i, ARTICULATION, TURN_SPEED);
-          if(TURN_CW[i])
-            runWheelMotor(i, DRIVE, -DRIVE_SPEED);//check the drive directions
+          if(ARDUINO_NUM == 0)
+            runWheelMotor(i, DRIVE, DRIVE_SPEED);//check the drive directions
           else
-            runWheelMotor(i, DRIVE, DRIVE_SPEED);
+            runWheelMotor(i, DRIVE, -DRIVE_SPEED);
         }
         else{
           runWheelMotor(i, ARTICULATION, -TURN_SPEED);
-          if(TURN_CW[i])
-            runWheelMotor(i, DRIVE, DRIVE_SPEED);
-          else
+          if(ARDUINO_NUM == 0)
             runWheelMotor(i, DRIVE, -DRIVE_SPEED);
+          else
+            runWheelMotor(i, DRIVE, DRIVE_SPEED);
         }
       }
       lastDir[i] = cw;
