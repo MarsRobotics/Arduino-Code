@@ -127,75 +127,93 @@ void messageCb( const manual::SimpleCommand& msg){
     case 1:
       driveStraight(true); 
       feedbackMessage.message = "drive forward";
+      break;
     case 2:
       driveStraight(false);
       feedbackMessage.message = "drive backward";
+      break;
     case 3:
       //drive forward & turn articulation motors left
       turnDrive(false, true);
       //feedbackMessage.message = "drive & turn left";
       feedbackMessage.message = "not implemented";
+      break;
     case 4:
       //drive forward & turn articulation motors right
       turnDrive(true, true);
       //feedbackMessage.message = "drive & turn right";
       feedbackMessage.message = "not implemented";
+      break;
     case 5:
       //just turn articulation motors left
       turnInPlace(false);
       feedbackMessage.message = "articulate left";
+      break;
     case 6:
       //just turn articulation motors right
       turnInPlace(true);
       feedbackMessage.message = "articulate right";
+      break;
     case 7:
       //STOP ALL MOTORS
       feedbackMessage.message = "stop";
       fullStop();
+      break;
     case 8:
       //pack in 
       packIn();
       feedbackMessage.message = "pack in";
+      break;
     case 9:
       //pack out
       packOut();
       feedbackMessage.message = "pack out";
+      break;
     case 10: 
       //turn bucket chain slow-- this is the 'safer' method
       testBucketChainSlow();
       feedbackMessage.message = "turn bucket chain";
+      break;
     case 16: 
       //turn bucket chain faster with ramp up
       testBucketChain();
       feedbackMessage.message = "turn bucket chain fast";
+      break;
     case 11: 
       //raise bucket chain
       testRaiseBucketChain();
       feedbackMessage.message = "raise bucket chain";
+      break;
     case 12: 
       //lower bucket chain
       testLowerBucketChain(); 
       feedbackMessage.message = "lower bucket chain";
+      break;
     case 13: 
       //raise conveyor
       raiseConveyor();
       feedbackMessage.message = "raise conveyor ";
+      break;
     case 14: 
       //lower conveyor
       lowerConveyor();  
       //feedbackMessage.message = "lower conveyor ";
+      break;
     case 15: 
       //turn conveyor 
       runConveyor();
       feedbackMessage.message = "turn conveyor ";
+      break;
     case 17:
       //raise scissor lift
       //feedbackMessage.message = "raise scissor lift ";
       feedbackMessage.message = "not implemented";
+      break;
     case 18:
       //lower scissor lift
       //feedbackMessage.message = "lower scissor lift ";
       feedbackMessage.message = "not implemented";
+      break;
     case 999:
       //test
       runWheelMotor(0, DRIVE, 50);
@@ -494,21 +512,7 @@ void alignWheels(int commandNum){
         runWheelMotor(i, ARTICULATION, 0);
         runWheelMotor(i, DRIVE, 0);
         aligned[i] = true;
-      }
-      else if(abs(diff) <= 64){//if we are within 128 encoder counts (45 degrees), switch to fine-tuning mode
-        cw = lastDir[i];
-        if(abs(diff) > abs(lastDiff[i])+5)//if we are farther away from our target than we were last loop, then reverse the direction we turn the wheel (add 5 to remove the chance that noise is causing this)
-          cw = !cw;
-        if(cw){
-          runWheelMotor(i, ARTICULATION, TURN_SPEED);
-          runWheelMotor(i, DRIVE, DRIVE_SPEED);//check the drive directions
-        }
-        else{
-          runWheelMotor(i, ARTICULATION, -TURN_SPEED);
-          runWheelMotor(i, DRIVE, -DRIVE_SPEED);
-        }
-      }
-      
+      }  
       else{//we are far away from our target, so just make sure we are turning the correct direction to get there
         if(commandNum == 1)//packing in will have us go the opposite direction
           cw = !cw;
