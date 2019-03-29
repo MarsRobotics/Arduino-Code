@@ -20,7 +20,7 @@
 
 //Use for testing and calibrating. For normal operation, make these false.
 //Open Serial Monitor to see details.
-const bool DEBUG = true;
+const bool DEBUG = false;
 const bool TEST_MOTORS = false;
 const bool CALIBRATE_ENCODER = false;
 const bool TEST_STEPPERS = false;
@@ -53,7 +53,7 @@ Sabertooth ST[2][3] = {{Sabertooth(128, SWSerial), Sabertooth(133, SWSerial), Sa
 
 //Array of booleans to tell if a particular wheel is supposed to run or not
 boolean enabled[2][3] = {{true, true, true},
-                         {false, true, true}};
+                         {true, true, true}};
 
 //Angles for wheels to be in when in different states
 const int PACKED_ANGLES[3] = {0, 0, 0};
@@ -69,15 +69,15 @@ const bool TURN_CW[3] = {false, false, true};
 //True zero of the encoders.
 //Zero is taken to be the packed in state.
 const int TRUE_ZERO[2][3] = {{0, 360, 640},
-                             {450, 420, 90}};
+                             {770, 420, 90}};
 
 //The analog pins where the encoders are plugged into
 const int ENCODER_PINS[3] = {A0, A1, A2};
 
 //the factor to adjust the drive motors' speeds by to try and keep them turning at the same speed. Order is front to back.
-const float SPEED_ADJUST[2][6] = {{1, -1, -1,  //Left Drive
+const float SPEED_ADJUST[2][6] = {{1, -0.8, 1,  //Left Drive
                                    -2, 0.8, -1}, //Left Art
-                                  {1, -1, -2,  //Right Drive
+                                  {-1, -1, -1,  //Right Drive
                                    1, -1, -1}};//Right Art
 //If the motors are wired backwards to how we expect,
 //change the corresponding float to negative.
@@ -97,7 +97,7 @@ const int ARTICULATION = 2;//articulation motors are on M2
 //all the pre-set speeds which we run the motors at
 const int DRIVE_SPEED = 50;//50/127 default speed for drive motors
 const int TURN_SPEED = 50;//50/127 default speed for articulation motors
-const int DIG_SPEED = 250;//25 microsecond pulse frequency (it runs through a 20:1 gear ratio
+const int DIG_SPEED = 200;//25 microsecond pulse frequency (it runs through a 20:1 gear ratio
 const int RAISE_SPEED = 500;//100 microsecond pulse frequency
 const int MOVE_CONVEYOR_SPEED = 500;
 const int CONVEYOR_SPEED = 50;//50/127
@@ -337,7 +337,7 @@ void testStepper(int controller) {
 }
 
 void testBucketRaise(){
-  testLowerBucketChain();
+  //testLowerBucketChain();
   testRaiseBucketChain();
 }
 
@@ -350,11 +350,11 @@ void testRaiseBucketChain(){
 }
 
 void testBucketChain(){
-  runStepperMotor(2, 20000, false);
+  runStepperMotor(2, 5000, false);
 }
 
 void testBucketChainSlow(){
-  runStepperSlow(2, 10000, true);
+  runStepperSlow(2, 5000, true);
 }
 
 void testConveyorRaise(){
@@ -380,10 +380,12 @@ void digLower(){
   digitalWrite(STEPPER_DIR[0], LOW);
   digitalWrite(STEPPER_DIR[2], HIGH);
   for(int i = 0; i < 100000; i++){
-    digitalWrite(STEPPER_PUL[0], HIGH);
+    if(i%8 == 0)
+      digitalWrite(STEPPER_PUL[0], HIGH);
     digitalWrite(STEPPER_PUL[2], HIGH);
     delayMicroseconds(500);
-    digitalWrite(STEPPER_PUL[0], LOW);
+    if(i%8 == 0)
+      digitalWrite(STEPPER_PUL[0], LOW);
     digitalWrite(STEPPER_PUL[2], LOW);
     delayMicroseconds(500);
   }
@@ -450,6 +452,17 @@ void driveStraight(bool forward){
   }
 }
 
+void sideDrive(bool right){
+  alignWheels(4);
+  int driveSpeed = DRIVE_SPEED;
+  if(right && ARDUINO_NUM == 1 || !right && ARDUINO_NUM == 0)
+    driveSpeed = -driveSpeed;
+  for(int i = 0; i < 2; i++){
+    runWheelMotor(i, DRIVE, driveSpeed);
+  }
+  runWheelMotor(2, DRIVE, -driveSpeed);
+}
+
 void testSixDrive(){
   for(int i = 0; i < 3; i++){
     ST[0][i].motor(DRIVE, SPEED_ADJUST[0][i] * DRIVE_SPEED);
@@ -473,8 +486,10 @@ void alignWheels(int commandNum){
   bool complete = false;
   bool aligned[3] = {false, false, false};
   int angles[3];
+  bool normalDir = true;
   switch(commandNum){//copy the proper array to angles;
     case 1:
+      normalDir = false;
       for(int i = 0; i < 3; i++)
         angles[i] = PACKED_ANGLES[i];
       break;
@@ -483,6 +498,8 @@ void alignWheels(int commandNum){
         angles[i] = DRIVE_ANGLES[i];
       break;
     case 3:
+      if(readEncoder(0) < 800 && readEncoder(0) > 360)//if we are basically packed out, we want to turn the opposite direction we would from being packed in.
+        normalDir = false;
       if(ARDUINO_NUM == 0){
         for(int i = 0; i < 3; i++)
           angles[i] = TURN_ANGLES[i];
@@ -493,6 +510,8 @@ void alignWheels(int commandNum){
       }
       break;
     case 4:
+      if(readEncoder(0) > 256 && readEncoder(0) < 800)//same as before
+        normalDir = false;
       for(int i = 0; i < 3; i++)
         angles[i] = SIDE_DRIVE_ANGLES[i];
       break;
@@ -520,7 +539,7 @@ void alignWheels(int commandNum){
         aligned[i] = true;
       }  
       else{//we are far away from our target, so just make sure we are turning the correct direction to get there
-        if(commandNum == 1)//packing in will have us go the opposite direction
+        if(!normalDir)//packing in will have us go the opposite direction
           cw = !cw;
         if(!TURN_CW[i])//back wheels go the opposite direction
           cw = !cw;
@@ -601,7 +620,8 @@ void runStepperMotor(int stepper, int steps, bool dir) {
   else
     digitalWrite(STEPPER_DIR[stepper], LOW);
   int count = 0;
-  for(int i = 0; i < steps; i++){
+  //for(int i = 0; i < steps; i++){
+  while(true){
     if(count % 50 == 0 && d > finalD){
       d -= 1;
     }
