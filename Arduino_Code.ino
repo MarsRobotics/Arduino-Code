@@ -37,7 +37,7 @@ const int ENCODER_TO_CALIBRATE = 0;//0-2 from front to back.
 const bool CALIBRATE_DIRECTION = false;//true for positive, false for negative
 const int STEPPER_TO_TEST = 0;//0 is allowed for both boxes. 1 and 2 are only allowed for left box (ARDUINO_NUM 0)
 
-const int ARDUINO_NUM = 0;//0 is left arduino, 1 is right.
+const int ARDUINO_NUM = 1;//0 is left arduino, 1 is right.
 
 //In order to output human readable, useful data goes on the Serial Monitor
 //Control for the Sabertooths goes on pin 14.
@@ -75,10 +75,10 @@ const int TRUE_ZERO[2][3] = {{0, 360, 640},
 const int ENCODER_PINS[3] = {A0, A1, A2};
 
 //the factor to adjust the drive motors' speeds by to try and keep them turning at the same speed. Order is front to back.
-const float SPEED_ADJUST[2][6] = {{1, -0.8, 1,  //Left Drive
-                                   -2, 0.8, -1}, //Left Art
+const float SPEED_ADJUST[2][6] = {{1.39, -1, 1.39,  //Left Drive
+                                   -2, 0.9, -1}, //Left Art
                                   {-1, -1, -1,  //Right Drive
-                                   1, -1, -1}};//Right Art
+                                   .8, -.8, -.8}};//Right Art
 //If the motors are wired backwards to how we expect,
 //change the corresponding float to negative.
 
@@ -275,6 +275,8 @@ void setup() {
     digLower();
   if(TEST_RAISE_DUMP)
     dumpRaise();
+  //packOut();
+  runWheelMotor(0,DRIVE, 30);
 }
 
 void loop() {
@@ -522,7 +524,6 @@ void alignWheels(int commandNum){
   int lastDiff[3];
   bool lastDir[3];
   while(!complete && !motorDisable){
-    nh.spinOnce();
     for(int i = 0; i < 3; i++){
       if(aligned[i])
         continue;
