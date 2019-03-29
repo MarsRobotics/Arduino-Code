@@ -23,7 +23,6 @@
 const bool DEBUG = false;
 const bool TEST_MOTORS = false;
 const bool CALIBRATE_ENCODER = false;
-const bool TEST_STEPPERS = false;
 const bool PRINT_ENCODERS = false;
 const bool TEST_RAISE_LOWER_BUCKET_CHAIN = false;
 const bool TEST_BUCKET_CHAIN = false;//ramp up from 500 delay to 250 delay (change DIG_SPEED to change the speed)
@@ -35,7 +34,6 @@ const bool TEST_LOWER_DIG = false;
 const bool TEST_RAISE_DUMP = false;
 const int ENCODER_TO_CALIBRATE = 0;//0-2 from front to back.
 const bool CALIBRATE_DIRECTION = false;//true for positive, false for negative
-const int STEPPER_TO_TEST = 0;//0 is allowed for both boxes. 1 and 2 are only allowed for left box (ARDUINO_NUM 0)
 
 const int ARDUINO_NUM = 0;//0 is left arduino, 1 is right.
 
@@ -96,6 +94,7 @@ const int ARTICULATION = 2;//articulation motors are on M2
 
 //all the pre-set speeds which we run the motors at
 const int DRIVE_SPEED = 50;//50/127 default speed for drive motors
+const int TURN_DRIVE_SPEED = 25;//25/127 default speed for drive motors while realigining the wheels
 const int TURN_SPEED = 50;//50/127 default speed for articulation motors
 const int DIG_SPEED = 200;//25 microsecond pulse frequency (it runs through a 20:1 gear ratio
 const int RAISE_SPEED = 500;//100 microsecond pulse frequency
@@ -171,22 +170,22 @@ void messageCb( const manual::SimpleCommand& msg){
       break;
     case 10: 
       //turn bucket chain slow-- this is the 'safer' method
-      testBucketChainSlow();
+      runBucketChainSlow();
       feedbackMessage.message = "turn bucket chain";
       break;
     case 16: 
       //turn bucket chain faster with ramp up
-      testBucketChain();
+      runBucketChain();
       feedbackMessage.message = "turn bucket chain fast";
       break;
     case 11: 
       //raise bucket chain
-      testRaiseBucketChain();
+      raiseBucketChain();
       feedbackMessage.message = "raise bucket chain";
       break;
     case 12: 
       //lower bucket chain
-      testLowerBucketChain(); 
+      lowerBucketChain(); 
       feedbackMessage.message = "lower bucket chain";
       break;
     case 13: 
@@ -254,14 +253,10 @@ void setup() {
     testDrive(DRIVE_SPEED);
   if (CALIBRATE_ENCODER)
     calibrateEncoder(ENCODER_TO_CALIBRATE, CALIBRATE_DIRECTION);
-  if (TEST_STEPPERS)
-    testStepper(STEPPER_TO_TEST);
-  if (TEST_RAISE_LOWER_BUCKET_CHAIN)
-      testBucketRaise();
   if (TEST_BUCKET_CHAIN)
-    testBucketChain();
+    runBucketChain();
   if (TEST_BUCKET_CHAIN_SLOW)
-    testBucketChainSlow();
+    runBucketChainSlow();
   if(PRINT_ENCODERS)
     while(true)
       printEncoders();
@@ -329,32 +324,19 @@ void testDrive(int vel){
   }
 }
 
-/**
- * Tests the specified stepper by running it forward for 3200 steps (usually 8 revs) and then backward for 5000 steps
- */
-void testStepper(int controller) {
-  //runStepperMotor(controller, 1000, true);
-  runStepperMotor(controller, 1000, false);
+void lowerBucketChain(){
+  runStepperMotor(0, true);
 }
 
-void testBucketRaise(){
-  //testLowerBucketChain();
-  testRaiseBucketChain();
+void raiseBucketChain(){
+  runStepperMotor(0, false);
 }
 
-void testLowerBucketChain(){
-  runStepperMotor(0, 3000, true);
+void runBucketChain(){
+  runStepperMotor(2, false);
 }
 
-void testRaiseBucketChain(){
-  runStepperMotor(0, 3000, false);
-}
-
-void testBucketChain(){
-  runStepperMotor(2, 5000, false);
-}
-
-void testBucketChainSlow(){
+void runBucketChainSlow(){
   runStepperSlow(2, 5000, true);
 }
 
@@ -364,11 +346,11 @@ void testConveyorRaise(){
 }
 
 void raiseConveyor(){
-  runStepperMotor(1, 3000, true);
+  runStepperMotor(1, true);
 }
 
 void lowerConveyor(){
-  runStepperMotor(1, 3000, false);
+  runStepperMotor(1, false);
 }
 
 void runConveyor(){
@@ -522,8 +504,10 @@ void alignWheels(int commandNum){
       aligned[i] = true;
   int lastDiff[3];
   bool lastDir[3];
-  while(!complete && !motorDisable){
+  while(!complete){
     for(int i = 0; i < 3; i++){
+      if(motorDisable)
+        break;
       if(aligned[i])
         continue;
       int diff = readEncoder(i) - angles[i];
@@ -549,21 +533,23 @@ void alignWheels(int commandNum){
         if(cw){
           runWheelMotor(i, ARTICULATION, TURN_SPEED);
           if(ARDUINO_NUM == 0)
-            runWheelMotor(i, DRIVE, DRIVE_SPEED);//check the drive directions
+            runWheelMotor(i, DRIVE, TURN_DRIVE_SPEED);//check the drive directions
           else
-            runWheelMotor(i, DRIVE, -DRIVE_SPEED);
+            runWheelMotor(i, DRIVE, -TURN_DRIVE_SPEED);
         }
         else{
           runWheelMotor(i, ARTICULATION, -TURN_SPEED);
           if(ARDUINO_NUM == 0)
-            runWheelMotor(i, DRIVE, -DRIVE_SPEED);
+            runWheelMotor(i, DRIVE, -TURN_DRIVE_SPEED);
           else
-            runWheelMotor(i, DRIVE, DRIVE_SPEED);
+            runWheelMotor(i, DRIVE, TURN_DRIVE_SPEED);
         }
       }
       lastDir[i] = cw;
       lastDiff[i] = diff;
     }
+    if(motorDisable)
+      break;
     if(DEBUG)
       Serial.println();
     if(aligned[0] && aligned[1] && aligned[2])
@@ -597,7 +583,7 @@ void runWheelMotor(int controller, int motorNum, int vel){
    method to run a stepper
    range is 0 to 200kHZ pulse frequency.
 */
-void runStepperMotor(int stepper, int steps, bool dir) {
+void runStepperMotor(int stepper, bool dir) {
   if(stepper > 0 && ARDUINO_NUM == 1)
     return;
   int finalD;
@@ -623,7 +609,7 @@ void runStepperMotor(int stepper, int steps, bool dir) {
   int count = 0;
   //for(int i = 0; i < steps; i++){
   while(true){
-    if(count % 50 == 0 && d > finalD){
+    if(count % 25 == 0 && d > finalD){
       d -= 1;
     }
     nh.spinOnce();//make sure that messages can still be processed even while running the stepper
