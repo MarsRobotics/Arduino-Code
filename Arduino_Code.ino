@@ -522,6 +522,7 @@ void alignWheels(int commandNum){
   int lastDiff[3];
   bool lastDir[3];
   while(!complete && !motorDisable){
+    nh.spinOnce();
     for(int i = 0; i < 3; i++){
       if(aligned[i])
         continue;
