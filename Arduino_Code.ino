@@ -35,7 +35,7 @@ const bool TEST_RAISE_DUMP = false;
 const int ENCODER_TO_CALIBRATE = 0;//0-2 from front to back.
 const bool CALIBRATE_DIRECTION = false;//true for positive, false for negative
 
-const int ARDUINO_NUM = 0;//0 is left arduino, 1 is right.
+const int ARDUINO_NUM = 1;//0 is left arduino, 1 is right.
 
 //In order to output human readable, useful data goes on the Serial Monitor
 //Control for the Sabertooths goes on pin 14.
@@ -506,6 +506,7 @@ void alignWheels(int commandNum){
   bool lastDir[3];
   while(!complete){
     for(int i = 0; i < 3; i++){
+      nh.spinOnce();
       if(motorDisable)
         break;
       if(aligned[i])
@@ -636,8 +637,7 @@ void runStepperSlow(int stepper, int steps, bool dir){
     digitalWrite(STEPPER_DIR[stepper], HIGH);
   else
     digitalWrite(STEPPER_DIR[stepper], LOW);
-  for(int i = 0; i < steps; i++){
-  //while(true){
+  while(true){
     if(motorDisable)
       break;
     nh.spinOnce();
