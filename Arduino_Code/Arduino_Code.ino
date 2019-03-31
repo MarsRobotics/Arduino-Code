@@ -99,6 +99,7 @@ const int RAISE_SPEED = 500;//100 microsecond pulse frequency
 const int MOVE_CONVEYOR_SPEED = 500;
 const int CONVEYOR_SPEED = 50;//50/127
 const int CAMERA_SPEED = 25;//25/127
+const int DIG_LOWER_SPEED = 16;//The bucket chain lowers 1/16th the speed that it turns when digging while lowering
 
 //commands
 const int PACK_IN = 1;
@@ -210,6 +211,10 @@ void messageCb( const manual::SimpleCommand& msg){
       //lower scissor lift
       //feedbackMessage.message = "lower scissor lift ";
       feedbackMessage.message = "not implemented";
+      break;
+    case 19:
+      //lower while digging
+      digLower();
       break;
     case 999:
       //test
@@ -367,15 +372,23 @@ void digLower(){
   digitalWrite(STEPPER_ENA[2], LOW);
   digitalWrite(STEPPER_DIR[0], LOW);
   digitalWrite(STEPPER_DIR[2], HIGH);
-  for(int i = 0; i < 100000; i++){
-    if(i%8 == 0)
+  int finalD = DIG_SPEED;
+  int d = 500;
+  int count = 0;
+  while(true){
+    nh.spinOnce();
+    if(motorDisable)
+      break;
+    if(d > finalD && count % 12)
+      d--;
+    if(count % DIG_LOWER_SPEED == 0)
       digitalWrite(STEPPER_PUL[0], HIGH);
     digitalWrite(STEPPER_PUL[2], HIGH);
-    delayMicroseconds(500);
-    if(i%8 == 0)
+    delayMicroseconds(d);
+    if(count % DIG_LOWER_SPEED == 0)
       digitalWrite(STEPPER_PUL[0], LOW);
     digitalWrite(STEPPER_PUL[2], LOW);
-    delayMicroseconds(500);
+    delayMicroseconds(d);
   }
   digitalWrite(STEPPER_ENA[0], HIGH);
   digitalWrite(STEPPER_ENA[2], HIGH);
@@ -615,7 +628,7 @@ void runStepperMotor(int stepper, bool dir) {
   int count = 0;
   //for(int i = 0; i < steps; i++){
   while(true){
-    if(count % 25 == 0 && d > finalD){
+    if(count % 12 == 0 && d > finalD){
       d -= 1;
     }
     nh.spinOnce();//make sure that messages can still be processed even while running the stepper
