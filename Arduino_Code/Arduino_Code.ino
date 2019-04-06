@@ -33,8 +33,12 @@ const bool TEST_CONVEYOR_TURN = false;
 const bool TEST_SIX_DRIVE = false;//only works if we have one serial line running to all six motor controllers.
 const bool TEST_LOWER_DIG = false;
 const bool TEST_RAISE_DUMP = false;
+const bool TEST_ALIGN_WHEEL = false;
 const int ENCODER_TO_CALIBRATE = 0;//0-2 from front to back.
 const bool CALIBRATE_DIRECTION = false;//true for positive, false for negative
+const bool NORMAL = false;//for TEST_ALIGN_WHEEL, the direction to turn while aligning
+const int TEST_ANGLE = 0;//angle to align to for TEST_ALIGN_WHEEL
+const int TEST_WHEEL = 0;//wheel to align for TEST_ALIGN_WHEEL (all other wheels will be disabled while the function is running.
 
 const int ARDUINO_NUM = 1;//0 is left arduino, 1 is right.
 
@@ -75,7 +79,7 @@ const int ENCODER_PINS[3] = {A0, A1, A2};
 
 //the factor to adjust the drive motors' speeds by to try and keep them turning at the same speed. Order is front to back.
 const float SPEED_ADJUST[2][6] = {{1.39, -1, 1.39,  //Left Drive
-                                   -2, 0.9, -1}, //Left Art
+                                   -2, 1, -1}, //Left Art
                                   {-1.2, -1, -1,  //Right Drive
                                    .8, -.8, -.8}};//Right Art
 //If the motors are wired backwards to how we expect,
@@ -94,9 +98,9 @@ const int ARTICULATION = 2;//articulation motors are on M2
 const int DRIVE_SPEED = 50;//50/127 default speed for drive motors
 const int TURN_DRIVE_SPEED = 25;//25/127 default speed for drive motors while realigining the wheels
 const int TURN_SPEED = 50;//50/127 default speed for articulation motors
-const int DIG_SPEED = 200;//25 microsecond pulse frequency (it runs through a 20:1 gear ratio
+const int DIG_SPEED = 125;//25 microsecond pulse frequency (it runs through a 20:1 gear ratio
 const int RAISE_SPEED = 500;//100 microsecond pulse frequency
-const int MOVE_CONVEYOR_SPEED = 500;
+const int MOVE_CONVEYOR_SPEED = 250;
 const int CONVEYOR_SPEED = 50;//50/127
 const int CAMERA_SPEED = 25;//25/127
 const int DIG_LOWER_SPEED = 16;//The bucket chain lowers 1/16th the speed that it turns when digging while lowering
@@ -215,6 +219,7 @@ void messageCb( const manual::SimpleCommand& msg){
     case 19:
       //lower while digging
       digLower();
+      feedbackMessage.message = "dig and lower";
       break;
     case 999:
       //test
@@ -275,6 +280,8 @@ void setup() {
     digLower();
   if(TEST_RAISE_DUMP)
     dumpRaise();
+  if(TEST_ALIGN_WHEEL)
+    testAlignWheel(NORMAL);
 }
 
 void loop() {
@@ -418,6 +425,21 @@ void fullStop(){
   
 }
 
+void testAlignWheel(bool normal){
+  for(int i = 0; i < 3; i++){
+    if(i != TEST_WHEEL)
+      enabled[ARDUINO_NUM][i] = false;
+  }
+  if(normal)
+    alignWheels(6);
+  else
+    alignWheels(5);
+  for(int i = 0; i < 3; i++){
+    if(i != TEST_WHEEL)
+      enabled[ARDUINO_NUM][i] = true;
+  }
+}
+
 /**
  * function to turn the robot in place
  * @param right whether we want to turn right or left
@@ -487,20 +509,42 @@ void alignWheels(int commandNum){
   bool complete = false;
   bool aligned[3] = {false, false, false};
   int angles[3];
-  bool normalDir = true;
+  bool normalDir[3];
   switch(commandNum){//copy the proper array to angles;
     case 1:
-      normalDir = false;
+      for(int i = 0; i < 3; i++){
+        normalDir[i] = false;
+      }
       for(int i = 0; i < 3; i++)
         angles[i] = PACKED_ANGLES[i];
       break;
     case 2:
+      for(int i = 0; i < 2; i++){
+        if(readEncoder(i) < 500 && readEncoder(i) > 1000)
+          normalDir[i] = false;
+        else
+          normalDir[i] = true;
+      }
+      if(readEncoder(2) < 100 && readEncoder(2) > 524)
+        normalDir[2] = false;
+      else
+        normalDir[2] = true;
       for(int i = 0; i < 3; i++)
         angles[i] = DRIVE_ANGLES[i];
       break;
     case 3:
-      if(readEncoder(0) < 800 && readEncoder(0) > 360)//if we are basically packed out, we want to turn the opposite direction we would from being packed in.
-        normalDir = false;
+      if(readEncoder(0) < 700 && readEncoder(0) > 360)
+        normalDir[0] = false;
+      else
+        normalDir[0] = true;
+      if(readEncoder(1) < 500 && readEncoder(1) > 1000)
+        normalDir[1] = false;
+      else
+        normalDir[1] = true;
+      if(readEncoder(2) < 200 && readEncoder(2) > 640)
+        normalDir[2] = false;
+      else
+        normalDir[2] = true;
       if(ARDUINO_NUM == 0){
         for(int i = 0; i < 3; i++)
           angles[i] = TURN_ANGLES[i];
@@ -511,10 +555,26 @@ void alignWheels(int commandNum){
       }
       break;
     case 4:
-      if(readEncoder(0) > 256 && readEncoder(0) < 800)//same as before
-        normalDir = false;
+      for(int i = 0; i < 2; i++){
+        if(readEncoder(i) > 256 && readEncoder(i) < 800)
+          normalDir[i] = false;
+        else
+          normalDir[i] = true;
+      }
       for(int i = 0; i < 3; i++)
         angles[i] = SIDE_DRIVE_ANGLES[i];
+      break;
+    case 5:
+      for(int i = 0; i < 3; i++)
+        normalDir[i] = false;
+      for(int i = 0; i < 3; i++)
+        angles[i] = TEST_ANGLE;
+      break;
+    case 6:
+      for(int i = 0; i < 3; i++)
+        normalDir[i] = true;
+      for(int i = 0; i < 3; i++)
+        angles[i] = TEST_ANGLE;
       break;
   }
   for(int i = 0; i < 3; i++)//if a wheel is disabled, we do not want to try to align it
@@ -543,7 +603,7 @@ void alignWheels(int commandNum){
         aligned[i] = true;
       }  
       else{//we are far away from our target, so just make sure we are turning the correct direction to get there
-        if(!normalDir)//packing in will have us go the opposite direction
+        if(!normalDir[i])//packing in will have us go the opposite direction
           cw = !cw;
         if(!TURN_CW[i])//back wheels go the opposite direction
           cw = !cw;
@@ -628,7 +688,7 @@ void runStepperMotor(int stepper, bool dir) {
   int count = 0;
   //for(int i = 0; i < steps; i++){
   while(true){
-    if(count % 12 == 0 && d > finalD){
+    if(count % 25 == 0 && d > finalD){
       d -= 1;
     }
     nh.spinOnce();//make sure that messages can still be processed even while running the stepper
