@@ -34,11 +34,11 @@ const bool TEST_SIX_DRIVE = false;//only works if we have one serial line runnin
 const bool TEST_LOWER_DIG = false;
 const bool TEST_RAISE_DUMP = false;
 const bool TEST_ALIGN_WHEEL = false;
-const int ENCODER_TO_CALIBRATE = 0;//0-2 from front to back.
+const int ENCODER_TO_CALIBRATE = 2;//0-2 from front to back.
 const bool CALIBRATE_DIRECTION = false;//true for positive, false for negative
 const bool NORMAL = false;//for TEST_ALIGN_WHEEL, the direction to turn while aligning
 const int TEST_ANGLE = 0;//angle to align to for TEST_ALIGN_WHEEL
-const int TEST_WHEEL = 0;//wheel to align for TEST_ALIGN_WHEEL (all other wheels will be disabled while the function is running.
+const int TEST_WHEEL = 2;//wheel to align for TEST_ALIGN_WHEEL (all other wheels will be disabled while the function is running.
 
 const int ARDUINO_NUM = 1;//0 is left arduino, 1 is right.
 
@@ -71,7 +71,7 @@ const bool TURN_CW[3] = {false, false, true};
 
 //True zero of the encoders.
 //Zero is taken to be the packed in state.
-const int TRUE_ZERO[2][3] = {{0, 360, 640},
+const int TRUE_ZERO[2][3] = {{1000, 360, 640},
                              {770, 420, 90}};
 
 //The analog pins where the encoders are plugged into
@@ -542,9 +542,9 @@ void alignWheels(int commandNum){
       else
         normalDir[1] = true;
       if(readEncoder(2) < 200 && readEncoder(2) > 640)
-        normalDir[2] = false;
-      else
         normalDir[2] = true;
+      else
+        normalDir[2] = false;
       if(ARDUINO_NUM == 0){
         for(int i = 0; i < 3; i++)
           angles[i] = TURN_ANGLES[i];
