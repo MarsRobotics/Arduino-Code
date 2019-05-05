@@ -255,6 +255,7 @@ void setup() {
   for (int i = 0; i < 3; i++) {//make sure all the drive motors are off
     runWheelMotor(i, DRIVE, 0);
     runWheelMotor(i, ARTICULATION, 0);
+    pinMode(ENCODER_PINS[i], INPUT);
   }
   delay(1000);//just a little break before we go to work
   if (TEST_MOTORS)//all the test functions. Booleans used to run them are found at the top of the file.
@@ -512,9 +513,16 @@ void alignWheels(int commandNum){
   bool normalDir[3];
   switch(commandNum){//copy the proper array to angles;
     case 1:
-      for(int i = 0; i < 3; i++){
-        normalDir[i] = false;
+      for(int i = 0; i < 2; i++){
+        if(readEncoder(i) > 12 && readEncoder(i) < 700)
+          normalDir[i] = false;
+        else
+          normalDir[i] = true;
       }
+      if(readEncoder(2) > 300 && readEncoder(2) < 1012)
+        normalDir[2] = false;
+      else
+        normalDir[2] = true;
       for(int i = 0; i < 3; i++)
         angles[i] = PACKED_ANGLES[i];
       break;
